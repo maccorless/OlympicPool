@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Check Your Email - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto text-center">
+    <div class="bg-white shadow rounded-lg p-8">
+        {% if session.magic_link %}
+            <!-- DEV MODE: Show magic link directly -->
+            <div class="text-6xl mb-4">🔗</div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">Your Login Link</h1>
+            <p class="text-gray-600 mb-4">
+                Click the button below to log in:
+            </p>
+            <a href="{{ session.magic_link }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold mb-4">
+                Log In
+            </a>
+            <p class="text-sm text-gray-500">
+                (Dev mode: link shown on page. Disable NO_EMAIL_MODE in production)
+            </p>
+        {% else %}
+            <!-- PRODUCTION: Email sent -->
+            <div class="text-6xl mb-4">📧</div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
+            <p class="text-gray-600 mb-4">
+                We've sent you a login link. Click the link in the email to log in.
+            </p>
+            <p class="text-sm text-gray-500">
+                The link will expire in 1 hour.
+            </p>
+        {% endif %}
+    </div>
+
+    {% if not session.magic_link %}
+    <p class="mt-4 text-gray-600">
+        Didn't receive it? Check your spam folder or <a href="/login" class="text-blue-600 hover:text-blue-700">request a new link</a>.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

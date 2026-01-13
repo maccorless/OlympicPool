@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center py-12">
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">Olympic Medal Pool</h1>
+    <p class="text-xl text-gray-600 mb-8">Milano Cortina 2026</p>
+
+    {% if contest_state == 'setup' %}
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-6 py-4 rounded max-w-2xl mx-auto">
+            <p class="font-semibold">Coming Soon</p>
+            <p>The contest is being set up. Check back soon!</p>
+        </div>
+    {% elif contest_state == 'open' %}
+        <div class="max-w-2xl mx-auto">
+            <p class="text-lg text-gray-700 mb-8">Draft your countries. Win bragging rights.</p>
+
+            <div class="bg-white shadow rounded-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+                <ol class="text-left space-y-3 text-gray-700">
+                    <li><span class="font-semibold">1.</span> Spend 200 points on up to 10 countries</li>
+                    <li><span class="font-semibold">2.</span> Earn points when your countries win medals (Gold=3, Silver=2, Bronze=1)</li>
+                    <li><span class="font-semibold">3.</span> Track your ranking on the leaderboard</li>
+                </ol>
+            </div>
+
+            {% if not session.user_id %}
+                <div class="space-x-4">
+                    <a href="/register" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Enter Contest</a>
+                    <a href="/login" class="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg border-2 border-blue-600 hover:bg-blue-50 font-semibold">Login</a>
+                </div>
+            {% else %}
+                <a href="/draft" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Go to Draft</a>
+            {% endif %}
+        </div>
+    {% elif contest_state == 'locked' or contest_state == 'complete' %}
+        <div class="max-w-2xl mx-auto">
+            <p class="text-lg text-gray-700 mb-8">The Games are {{ 'finished' if contest_state == 'complete' else 'underway' }}!</p>
+            <a href="/leaderboard" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">View Leaderboard</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
