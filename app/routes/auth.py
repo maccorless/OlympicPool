@@ -115,17 +115,21 @@ def register_routes(app):
             user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
 
             if not user:
-                flash('No account found. Please register first.', 'error')
-                return render_template('auth/login.html', email=email)
+                # Don't reveal account existence (prevent enumeration)
+                # Still show success message to avoid leaking information
+                flash('If an account exists with that email, we\'ve sent you a login link.', 'info')
+                return redirect(url_for('check_email'))
 
             # Create magic link token
             success, error_msg = create_magic_link_token(db, user['id'])
 
             if not success:
-                flash(error_msg, 'error')
+                # Generic error to avoid enumeration
+                flash('Unable to send login link. Please try again.', 'error')
                 return render_template('auth/login.html', email=email)
 
             db.commit()
+            flash('Check your email for a login link.', 'info')
             return redirect(url_for('check_email'))
 
         return render_template('auth/login.html')
@@ -196,11 +200,11 @@ def create_magic_link_token(db, user_id):
         return False, "User not found."
 
     # Rate limiting: max 3 tokens per user per hour
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    # Use SQLite's datetime function for consistent timestamp comparison
     recent_tokens = db.execute('''
         SELECT COUNT(*) as count FROM tokens
-        WHERE user_id = ? AND created_at > ?
-    ''', [user_id, one_hour_ago.isoformat()]).fetchone()
+        WHERE user_id = ? AND created_at > datetime('now', '-1 hour')
+    ''', [user_id]).fetchone()
 
     if recent_tokens['count'] >= 3:
         return False, "Too many login attempts. Please try again in an hour."

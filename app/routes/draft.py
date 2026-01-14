@@ -3,7 +3,7 @@ Draft picker routes: display countries, select picks, submit final draft.
 """
 import sqlite3
 import logging
-from flask import render_template, request, redirect, url_for, flash, make_response, jsonify
+from flask import render_template, request, redirect, url_for, flash
 from app.db import get_db
 from app.decorators import login_required, require_state, get_current_user
 
@@ -153,11 +153,22 @@ def validate_picks(country_codes):
     if len(country_codes) != len(set(country_codes)):
         return False, "Duplicate countries are not allowed."
 
-    # Check budget
+    # Check that all countries exist and are active
     if len(country_codes) > 0:
         placeholders = ','.join('?' * len(country_codes))
+
+        # Verify all submitted codes are active countries
+        active_count = db.execute(
+            f'SELECT COUNT(*) as count FROM countries WHERE is_active = 1 AND code IN ({placeholders})',
+            country_codes
+        ).fetchone()['count']
+
+        if active_count != len(country_codes):
+            return False, "One or more selected countries are invalid or inactive."
+
+        # Check budget
         result = db.execute(
-            f'SELECT SUM(cost) as total FROM countries WHERE code IN ({placeholders})',
+            f'SELECT SUM(cost) as total FROM countries WHERE is_active = 1 AND code IN ({placeholders})',
             country_codes
         ).fetchone()
 

@@ -2,8 +2,11 @@
 Database connection and helpers using sqlite3.
 """
 import sqlite3
+import logging
 import click
 from flask import current_app, g
+
+logger = logging.getLogger(__name__)
 
 
 def get_db():
@@ -33,9 +36,26 @@ def init_db():
 
     # schema.sql is at project root (one level up from app/)
     schema_path = os.path.join(os.path.dirname(current_app.root_path), 'schema.sql')
-    with open(schema_path, 'r') as f:
-        db.executescript(f.read())
-    db.commit()
+
+    try:
+        with open(schema_path, 'r') as f:
+            schema_sql = f.read()
+    except FileNotFoundError:
+        logger.error(f"Schema file not found at {schema_path}")
+        click.echo(f"Error: Could not find schema.sql at {schema_path}", err=True)
+        raise
+    except Exception as e:
+        logger.error(f"Failed to read schema file: {e}")
+        click.echo(f"Error: Failed to read schema.sql: {e}", err=True)
+        raise
+
+    try:
+        db.executescript(schema_sql)
+        db.commit()
+    except sqlite3.Error as e:
+        logger.error(f"Failed to execute schema: {e}")
+        click.echo(f"Error: Failed to initialize database: {e}", err=True)
+        raise
 
     # Enable WAL mode (persistent setting, only needed once)
     db.execute('PRAGMA journal_mode = WAL')
