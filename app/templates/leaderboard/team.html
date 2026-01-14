@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user['team_name'] }} - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Back to Leaderboard -->
+    <div class="mb-4">
+        <a href="{{ url_for('leaderboard') }}" class="text-blue-600 hover:text-blue-800">
+            ← Back to Leaderboard
+        </a>
+    </div>
+
+    <!-- Team Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ user['team_name'] }}</h1>
+        <p class="text-gray-600">{{ user['name'] }}'s Team</p>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">Countries</div>
+                <div class="text-3xl font-bold text-blue-600">{{ picks|length }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">🥇 Gold</div>
+                <div class="text-3xl font-bold text-yellow-600">{{ total_gold }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">🥈 Silver</div>
+                <div class="text-3xl font-bold text-gray-400">{{ total_silver }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">🥉 Bronze</div>
+                <div class="text-3xl font-bold text-orange-600">{{ total_bronze }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">Total Points</div>
+                <div class="text-3xl font-bold text-purple-600">{{ total_points }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if picks|length == 0 %}
+    <!-- Empty State -->
+    <div class="bg-white shadow rounded-lg p-12 text-center">
+        <div class="text-6xl mb-4">🏅</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">No Picks Yet</h2>
+        <p class="text-gray-600">This team hasn't selected any countries.</p>
+    </div>
+    {% else %}
+    <!-- Picks Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥇</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥈</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥉</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for pick in picks %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <img src="https://flagcdn.com/w40/{{ pick.iso_code|lower }}.png"
+                                 alt="{{ pick.name }}"
+                                 class="w-8 h-5 mr-3 object-cover">
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{{ pick.name }}</div>
+                                <div class="text-xs text-gray-500">{{ pick.code }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-semibold text-blue-600">{{ pick.cost }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-yellow-600">{{ pick.gold }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-gray-400">{{ pick.silver }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-orange-600">{{ pick.bronze }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-purple-600">{{ pick.points }}</div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-50">
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">{{ total_cost }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-yellow-600">{{ total_gold }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-400">{{ total_silver }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-orange-600">{{ total_bronze }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{{ total_points }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="mt-4 text-center text-gray-600 text-sm">
+        <p>Budget: {{ total_cost }} / {{ budget }}</p>
+        <p class="mt-1">Scoring: Gold = 3 points, Silver = 2 points, Bronze = 1 point</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
