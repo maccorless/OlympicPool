@@ -828,6 +828,498 @@ olympic-medal-pool/
 
 ---
 
+## Common Pitfalls & Solutions
+
+This section documents issues encountered during implementation and their solutions. **Read this before implementing to avoid these mistakes.**
+
+### 1. SQLite Row Objects Are Not JSON Serializable
+
+**Problem:**
+```python
+# ❌ WRONG - Row objects can't be converted to JSON
+countries = db.execute('SELECT * FROM countries').fetchall()
+return render_template('page.html', countries=countries)  # {{ countries|tojson }} will fail
+```
+
+**Error:**
+```
+TypeError: Object of type Row is not JSON serializable
+```
+
+**Solution:**
+```python
+# ✅ CORRECT - Convert Row objects to dicts first
+countries_rows = db.execute('SELECT code, iso_code, name, cost FROM countries').fetchall()
+countries = [dict(row) for row in countries_rows]
+return render_template('page.html', countries=countries)  # {{ countries|tojson }} works
+```
+
+**When this matters:**
+- Any time you pass database query results to templates that use `|tojson` filter
+- Draft picker (countries data)
+- Leaderboard (user rankings)
+- Admin panels (country lists, medal data)
+
+---
+
+### 2. Alpine.js Script Placement and Initialization
+
+**Problem:**
+```html
+<!-- ❌ WRONG - Script defined AFTER x-data tries to use it -->
+<div x-data="draftPicker([...], 200, 10)">
+  <!-- Alpine.js tries to call draftPicker() but it doesn't exist yet! -->
+</div>
+
+<script>
+function draftPicker(initialSelected, budget, maxCountries) {
+  // Function defined too late
+}
+</script>
+```
+
+**Error:**
+```
+Alpine Expression Error: Unexpected token '}'
+draftPicker is not defined
+```
+
+**Solution:**
+```html
+<!-- ✅ CORRECT - Script BEFORE x-data -->
+{% block content %}
+<script>
+function draftPicker(initialSelected, budget, maxCountries) {
+  return {
+    selected: initialSelected || [],
+    // ... rest of component
+  }
+}
+</script>
+
+<div x-data="draftPicker({{ selected_codes|tojson|safe }}, {{ budget }}, {{ max_countries }})">
+  <!-- Now Alpine.js can find draftPicker() -->
+</div>
+{% endblock %}
+```
+
+**Critical rules:**
+1. Define JavaScript functions BEFORE the HTML that uses them
+2. Always use `|tojson|safe` filter when passing Python data to JavaScript
+3. Never use duplicate script tags (remove any scripts at the bottom)
+
+---
+
+### 3. Alpine.js Scope: Server-Side Loops vs Client-Side Loops
+
+**Problem:**
+```html
+<!-- ❌ WRONG - Jinja loop creates HTML outside Alpine.js scope -->
+<div x-data="draftPicker()">
+  {% for country in countries %}
+    <div :class="{ 'selected': isSelected('{{ country.code }}') }">
+      <!-- isSelected() is not defined in this scope! -->
+    </div>
+  {% endfor %}
+</div>
+```
+
+**Error:**
+```
+Uncaught ReferenceError: isSelected is not defined
+Uncaught ReferenceError: canAfford is not defined
+```
+
+**Solution:**
+```html
+<!-- ✅ CORRECT - Alpine.js loop keeps everything in scope -->
+<div x-data="draftPicker()">
+  <template x-for="country in countries" :key="country.code">
+    <div :class="{ 'selected': isSelected(country.code) }">
+      <!-- isSelected() is accessible because we're inside Alpine.js scope -->
+      <span x-text="country.name"></span>
+      <span x-text="country.cost"></span>
+    </div>
+  </template>
+</div>
+```
+
+**When to use each:**
+- **Jinja loops `{% for %}`**: Use for static content that doesn't need Alpine.js reactivity
+- **Alpine.js loops `<template x-for>`**: Use when content needs to access Alpine.js component properties/methods
+
+**For draft picker specifically:**
+- Country list MUST use `<template x-for>` because cards need access to:
+  - `isSelected(code)` - check if country is selected
+  - `canAfford(code)` - check if user can afford it
+  - `toggleCountry(code)` - handle click events
+  - `getCountry(code)` - get country details
+
+---
+
+### 4. Browser Navigation Warnings (beforeunload)
+
+**Problem:**
+```javascript
+// ❌ WRONG - Warns even when user intentionally submits form
+warnIfUnsaved(event) {
+  if (this.selected.length > 0) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+}
+```
+
+**Issue:** User clicks "Save Picks" and gets "Leave site? Changes may not be saved" warning.
+
+**Solution:**
+```javascript
+// ✅ CORRECT - Track intentional submissions
+return {
+  isSubmitting: false,  // Add flag
+
+  submitPicks() {
+    if (this.canSubmit()) {
+      this.isSubmitting = true;  // Set flag before submit
+      document.getElementById('draft-form').submit();
+    }
+  },
+
+  warnIfUnsaved(event) {
+    if (this.isSubmitting) return;  // Don't warn if submitting
+    if (this.selected.length > 0) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+}
+```
+
+---
+
+### 5. Preserving User Selections When Editing
+
+**Problem:** User saves picks, clicks "Edit Picks", but form shows empty (no countries selected).
+
+**Root causes:**
+1. Not passing existing picks to template
+2. Not initializing Alpine.js component with existing selections
+3. Scope issues preventing Alpine.js from seeing selections
+
+**Solution:**
+```python
+# ✅ Backend: Fetch existing picks
+@app.route('/draft')
+@login_required
+@require_state('open')
+def draft():
+    user = get_current_user()
+
+    # Get user's current picks
+    existing_picks = db.execute('''
+        SELECT country_code FROM picks WHERE user_id = ?
+    ''', [user['id']]).fetchall()
+
+    selected_codes = [p['country_code'] for p in existing_picks]
+
+    return render_template('draft/picker.html',
+                         countries=countries,
+                         selected_codes=selected_codes,  # Pass to template
+                         budget=200,
+                         max_countries=10)
+```
+
+```html
+<!-- ✅ Frontend: Initialize Alpine.js with existing selections -->
+<script>
+function draftPicker(initialSelected, budget, maxCountries) {
+  return {
+    selected: initialSelected || [],  // Use initialSelected from server
+    // ...
+  }
+}
+</script>
+
+<div x-data="draftPicker({{ selected_codes|tojson|safe }}, {{ budget }}, {{ max_countries }})">
+  <!-- Component now starts with existing selections -->
+</div>
+```
+
+---
+
+### 6. Flask Auto-Reload During Development
+
+**Problem:** Making code changes but Flask doesn't pick them up; have to manually restart server.
+
+**Solution:**
+```bash
+# In .env file
+FLASK_DEBUG=True
+```
+
+Or when running Flask:
+```bash
+flask run --debug
+```
+
+**Benefits:**
+- Auto-reloads on code changes
+- Better error pages with stack traces
+- Debug toolbar (optional)
+
+**Important:** Never set `FLASK_DEBUG=True` in production!
+
+---
+
+### 7. Atomic Database Operations for Picks
+
+**Problem:** User's picks get partially saved if an error occurs mid-save.
+
+**Solution:**
+```python
+# ✅ CORRECT - Use transactions
+try:
+    db.execute('BEGIN')
+
+    # Delete existing picks
+    db.execute('DELETE FROM picks WHERE user_id = ?', [user['id']])
+
+    # Insert new picks
+    for code in country_codes:
+        db.execute('INSERT INTO picks (user_id, country_code) VALUES (?, ?)',
+                   [user['id'], code])
+
+    db.commit()  # All or nothing
+except sqlite3.Error as e:
+    db.rollback()  # Undo everything on error
+    logger.error(f"Failed to save picks: {e}")
+    flash('Failed to save picks. Please try again.', 'error')
+```
+
+**Why this matters:**
+- Ensures data integrity
+- User never ends up with half-saved picks
+- Failed saves leave database in previous state
+
+---
+
+### 8. Server-Side Validation with Dynamic SQL
+
+**Problem:** Need to validate budget for variable number of countries.
+
+**Solution:**
+```python
+# ✅ CORRECT - Build placeholders for parameterized query
+def validate_picks(country_codes):
+    if len(country_codes) > 0:
+        placeholders = ','.join('?' * len(country_codes))
+        result = db.execute(
+            f'SELECT SUM(cost) as total FROM countries WHERE code IN ({placeholders})',
+            country_codes
+        ).fetchone()
+
+        total_cost = result['total'] or 0
+
+        if total_cost > budget:
+            return False, f"Total cost ({total_cost}) exceeds budget ({budget})."
+
+    return True, None
+```
+
+**Why f-string is OK here:**
+- Building `(?, ?, ?)` placeholders, NOT inserting user data
+- Actual values still passed via parameterized query (second argument)
+- Safe from SQL injection
+
+**Never do:**
+```python
+# ❌ WRONG - SQL injection vulnerability
+query = f"SELECT * FROM countries WHERE code IN ({','.join(country_codes)})"
+db.execute(query)  # Dangerous!
+```
+
+---
+
+### 9. Jinja Template Filters for Safety
+
+**Always use `|safe` with `|tojson` when passing data to JavaScript:**
+
+```html
+<!-- ✅ CORRECT -->
+<script>
+const data = {{ my_data|tojson|safe }};
+</script>
+
+<div x-data="component({{ selected|tojson|safe }})">
+```
+
+**Without `|safe`, Jinja escapes the JSON:**
+```html
+<!-- ❌ WRONG - Jinja escapes quotes -->
+<script>
+const data = {{ my_data|tojson }};
+// Renders as: const data = {&quot;key&quot;: &quot;value&quot;};
+// JavaScript can't parse this!
+</script>
+```
+
+**When to use:**
+- Passing Python dicts/lists to JavaScript
+- Alpine.js component initialization
+- Inline JSON data in templates
+
+---
+
+### 10. Magic Link Implementation Details
+
+**Must-have features:**
+1. **Single-use tokens:** Set `used_at` timestamp when consumed
+2. **Expiration:** Check `expires_at > CURRENT_TIMESTAMP`
+3. **No account existence disclosure:** Same message for existing/new emails
+
+```python
+# ✅ CORRECT - Complete magic link verification
+@app.route('/auth/<token>')
+def verify_magic_link(token):
+    db = get_db()
+
+    # Check token validity
+    link = db.execute('''
+        SELECT * FROM tokens
+        WHERE token = ?
+          AND token_type = 'magic_link'
+          AND used_at IS NULL
+          AND expires_at > CURRENT_TIMESTAMP
+    ''', [token]).fetchone()
+
+    if not link:
+        flash('Invalid or expired link. Please request a new one.', 'error')
+        return redirect(url_for('login'))
+
+    # Mark as used (single-use)
+    db.execute('UPDATE tokens SET used_at = CURRENT_TIMESTAMP WHERE token = ?', [token])
+
+    # Get or create user
+    user = db.execute('SELECT * FROM users WHERE email = ?', [link['email']]).fetchone()
+
+    # Set session
+    session.permanent = True
+    session['user_id'] = user['id']
+    db.commit()
+
+    return redirect(url_for('draft'))
+```
+
+---
+
+### 11. Admin Email Configuration
+
+**Problem:** Forgetting to set admin emails means no admin access.
+
+**Solution:**
+```bash
+# .env file
+ADMIN_EMAILS=your@email.com,another@email.com
+```
+
+```python
+# decorators.py
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            abort(401)
+
+        admin_emails = current_app.config.get('ADMIN_EMAILS', '').split(',')
+        if user['email'] not in admin_emails:
+            abort(403)
+
+        return f(*args, **kwargs)
+    return decorated_function
+```
+
+**Testing:** Use the email you registered with as an admin email in development.
+
+---
+
+### 12. Route Registration Pattern
+
+**Keep it simple - register routes directly in app/__init__.py:**
+
+```python
+# ✅ CORRECT - Direct registration
+from app.routes import auth, draft, leaderboard, admin
+
+def create_app():
+    app = Flask(__name__)
+
+    # Register routes
+    auth.register_routes(app)
+    draft.register_routes(app)
+    leaderboard.register_routes(app)
+    admin.register_routes(app)
+
+    return app
+```
+
+**Each route file:**
+```python
+# app/routes/draft.py
+def register_routes(app):
+
+    @app.route('/draft')
+    @login_required
+    @require_state('open')
+    def draft():
+        # ...
+
+    @app.route('/draft/submit', methods=['POST'])
+    @login_required
+    @require_state('open')
+    def submit_draft():
+        # ...
+```
+
+**Don't use blueprints** - they add unnecessary complexity for this small app.
+
+---
+
+## Implementation Checklist
+
+When implementing each feature, verify:
+
+**Draft Picker:**
+- [ ] Convert SQLite Row objects to dicts before passing to template
+- [ ] Place `<script>` tag BEFORE `<div x-data>`
+- [ ] Use `<template x-for>` for country cards (not Jinja `{% for %}`)
+- [ ] Initialize Alpine.js component with `{{ selected_codes|tojson|safe }}`
+- [ ] Add `isSubmitting` flag to prevent false navigation warnings
+- [ ] Use atomic transactions (BEGIN/COMMIT) when saving picks
+- [ ] Validate picks server-side with dynamic placeholders
+- [ ] Fetch and pass existing picks when rendering edit form
+
+**Magic Links:**
+- [ ] Check token is unused (`used_at IS NULL`)
+- [ ] Check token hasn't expired (`expires_at > CURRENT_TIMESTAMP`)
+- [ ] Mark token as used after verification
+- [ ] Set `session.permanent = True` for persistent login
+- [ ] Don't reveal account existence (same message for all emails)
+
+**Database Operations:**
+- [ ] Always use parameterized queries (never f-strings with user data)
+- [ ] Use transactions for multi-step operations
+- [ ] Convert Row objects to dicts for JSON serialization
+- [ ] Handle rollback on errors
+
+**Templates:**
+- [ ] Use `|tojson|safe` when passing data to JavaScript
+- [ ] Place JavaScript before HTML that uses it
+- [ ] Use Alpine.js loops when accessing component scope
+- [ ] Use Jinja loops for static content only
+
+---
+
 ## Acceptance Criteria Checklist
 
 Before considering the app complete, verify:

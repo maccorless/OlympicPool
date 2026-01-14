@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Draft Your Team - Olympic Medal Pool{% endblock %}
+
+{% block head_scripts %}
+<script>
+// Store data globally to avoid huge inline JSON in x-data attribute
+window.pickerData = {
+    selected: {{ selected_codes|tojson|safe }},
+    budget: {{ budget }},
+    maxCountries: {{ max_countries }},
+    countries: {{ countries|tojson|safe }}
+};
+
+window.draftPicker = function() {
+    return {
+        selected: window.pickerData.selected || [],
+        budget: window.pickerData.budget,
+        maxCountries: window.pickerData.maxCountries,
+        countries: window.pickerData.countries,
+        isSubmitting: false,
+
+        get remaining() {
+            let spent = 0;
+            for (let code of this.selected) {
+                const country = this.getCountry(code);
+                if (country) {
+                    spent += country.cost;
+                }
+            }
+            return this.budget - spent;
+        },
+
+        getCountry(code) {
+            return this.countries.find(c => c.code === code);
+        },
+
+        isSelected(code) {
+            return this.selected.includes(code);
+        },
+
+        canAfford(code) {
+            if (this.isSelected(code)) return true;
+            const country = this.getCountry(code);
+            return country && this.remaining >= country.cost;
+        },
+
+        toggleCountry(code) {
+            if (this.isSelected(code)) {
+                this.selected = this.selected.filter(c => c !== code);
+            } else {
+                if (this.canAfford(code)) {
+                    this.selected.push(code);
+                }
+            }
+        },
+
+        canSubmit() {
+            return this.selected.length > 0 &&
+                   this.selected.length <= this.maxCountries &&
+                   this.remaining >= 0;
+        },
+
+        submitPicks() {
+            if (this.canSubmit()) {
+                // Mark as submitting to prevent warning
+                this.isSubmitting = true;
+                document.getElementById('draft-form').submit();
+            }
+        },
+
+        warnIfUnsaved(event) {
+            // Don't warn if we're submitting the form
+            if (this.isSubmitting) {
+                return;
+            }
+            // Warn if user has unsaved selections and tries to leave
+            if (this.selected.length > 0) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div x-data="draftPicker()" @beforeunload.window="warnIfUnsaved($event)">
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Draft Your Team</h1>
+        <p class="text-gray-600">Select up to {{ max_countries }} countries within your budget of {{ budget }} points</p>
+    </div>
+
+    <!-- Budget Bar -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6 sticky top-0 z-10">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <div class="text-sm text-gray-600">Budget Remaining</div>
+                <div class="text-2xl font-bold" :class="remaining < 0 ? 'text-red-600' : 'text-green-600'" x-text="remaining + ' / ' + {{ budget }}"></div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600">Countries Selected</div>
+                <div class="text-2xl font-bold" :class="selected.length > {{ max_countries }} ? 'text-red-600' : 'text-blue-600'" x-text="selected.length + ' / ' + {{ max_countries }}"></div>
+            </div>
+            <div>
+                <button
+                    @click="submitPicks()"
+                    :disabled="!canSubmit()"
+                    :class="canSubmit() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'"
+                    class="px-6 py-3 text-white font-semibold rounded-lg transition-colors">
+                    Save Picks
+                </button>
+            </div>
+        </div>
+
+        <!-- Budget progress bar -->
+        <div class="w-full bg-gray-200 rounded-full h-3">
+            <div
+                class="h-3 rounded-full transition-all duration-300"
+                :class="remaining < 0 ? 'bg-red-500' : 'bg-green-500'"
+                :style="{width: Math.min(100, ({{ budget }} - remaining) / {{ budget }} * 100) + '%'}">
+            </div>
+        </div>
+
+        <div x-show="!canSubmit()" class="mt-3 text-sm text-red-600">
+            <span x-show="selected.length === 0">Please select at least one country</span>
+            <span x-show="selected.length > {{ max_countries }}">Too many countries selected (max {{ max_countries }})</span>
+            <span x-show="remaining < 0">Over budget by <span x-text="Math.abs(remaining)"></span> points</span>
+        </div>
+    </div>
+
+    <!-- Selected Countries Summary -->
+    <div x-show="selected.length > 0" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 class="font-semibold text-blue-900 mb-3">Your Selections (<span x-text="selected.length"></span>)</h3>
+        <div class="flex flex-wrap gap-2">
+            <template x-for="code in selected" :key="code">
+                <div class="inline-flex items-center bg-white px-3 py-1 rounded-full border border-blue-300">
+                    <img :src="'https://flagcdn.com/w20/' + getCountry(code).iso_code.toLowerCase() + '.png'" class="w-5 h-3 mr-2">
+                    <span class="text-sm font-medium" x-text="getCountry(code).name"></span>
+                    <span class="text-xs text-gray-500 ml-2" x-text="'(' + getCountry(code).cost + ')'"></span>
+                    <button @click="toggleCountry(code)" class="ml-2 text-red-500 hover:text-red-700">×</button>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Country Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <template x-for="country in countries" :key="country.code">
+            <div
+                @click="toggleCountry(country.code)"
+                :class="{
+                    'border-blue-500 bg-blue-50': isSelected(country.code),
+                    'border-gray-300 hover:border-gray-400': !isSelected(country.code) && canAfford(country.code),
+                    'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed': !canAfford(country.code) && !isSelected(country.code)
+                }"
+                class="bg-white border-2 rounded-lg p-4 cursor-pointer transition-all">
+
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center">
+                        <img :src="'https://flagcdn.com/w40/' + country.iso_code.toLowerCase() + '.png'"
+                             :alt="country.name"
+                             class="w-8 h-5 mr-3 object-cover">
+                        <div>
+                            <div class="font-semibold text-gray-900" x-text="country.name"></div>
+                            <div class="text-xs text-gray-500" x-text="country.code"></div>
+                        </div>
+                    </div>
+                    <div x-show="isSelected(country.code)" class="text-blue-600 text-xl">✓</div>
+                </div>
+
+                <div class="flex justify-between items-end">
+                    <div>
+                        <div class="text-xs text-gray-500">Expected Points</div>
+                        <div class="text-sm font-medium text-gray-700" x-text="country.expected_points"></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-xs text-gray-500">Cost</div>
+                        <div class="text-lg font-bold text-blue-600" x-text="country.cost"></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Hidden form for submission -->
+    <form id="draft-form" method="POST" action="{{ url_for('submit_draft') }}" style="display: none;">
+        <template x-for="code in selected" :key="code">
+            <input type="hidden" name="countries[]" :value="code">
+        </template>
+    </form>
+</div>
+
+{% endblock %}

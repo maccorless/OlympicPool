@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}My Picks - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ user['team_name'] }}</h1>
+            <p class="text-gray-600">{{ user['name'] }}'s Team</p>
+        </div>
+        {% if contest_state == 'open' %}
+        <a href="{{ url_for('draft') }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+            Edit Picks
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Summary Card -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">Countries Selected</div>
+                <div class="text-3xl font-bold text-blue-600">{{ picks|length }}</div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">Total Cost</div>
+                <div class="text-3xl font-bold" class="{% if total_cost > budget %}text-red-600{% else %}text-green-600{% endif %}">
+                    {{ total_cost }} / {{ budget }}
+                </div>
+            </div>
+            <div class="text-center">
+                <div class="text-sm text-gray-600 mb-1">Total Points</div>
+                <div class="text-3xl font-bold text-purple-600">{{ total_points }}</div>
+            </div>
+        </div>
+    </div>
+
+    {% if picks|length == 0 %}
+    <!-- Empty State -->
+    <div class="bg-white shadow rounded-lg p-12 text-center">
+        <div class="text-6xl mb-4">🏅</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">No Picks Yet</h2>
+        <p class="text-gray-600 mb-6">You haven't selected any countries for your team.</p>
+        {% if contest_state == 'open' %}
+        <a href="{{ url_for('draft') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+            Start Drafting
+        </a>
+        {% else %}
+        <p class="text-gray-500">The draft is currently closed.</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <!-- Picks Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Pts</th>
+                    {% if contest_state in ['locked', 'complete'] %}
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥇</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥈</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥉</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actual Pts</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for pick in picks %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <img src="https://flagcdn.com/w40/{{ pick.iso_code|lower }}.png"
+                                 alt="{{ pick.name }}"
+                                 class="w-8 h-5 mr-3 object-cover">
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">{{ pick.name }}</div>
+                                <div class="text-xs text-gray-500">{{ pick.code }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-semibold text-blue-600">{{ pick.cost }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">{{ pick.expected_points }}</div>
+                    </td>
+                    {% if contest_state in ['locked', 'complete'] %}
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-yellow-600">{{ pick.gold }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-gray-400">{{ pick.silver }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center">
+                        <div class="text-sm font-semibold text-orange-600">{{ pick.bronze }}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-bold text-purple-600">{{ pick.points }}</div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-50">
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">{{ total_cost }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap"></td>
+                    {% if contest_state in ['locked', 'complete'] %}
+                    <td colspan="3" class="px-6 py-4"></td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{{ total_points }}</td>
+                    {% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if contest_state == 'open' %}
+    <div class="mt-4 text-center text-gray-600 text-sm">
+        <p>You can edit your picks until the contest closes on February 4, 2026.</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

@@ -660,12 +660,41 @@ Key fields:
 - `country_code` - IOC 3-letter code
 - `gold`, `silver`, `bronze` - Medal counts
 
-### 12.4 Companion Documents
+### 12.4 Critical Implementation Notes
+
+**⚠️ IMPORTANT: Read CLAUDE.md "Common Pitfalls & Solutions" section before implementing!**
+
+Key lessons learned from initial implementation:
+
+1. **SQLite Row objects must be converted to dicts before JSON serialization**
+   - Always use `[dict(row) for row in rows]` before passing to templates with `|tojson`
+
+2. **Alpine.js script placement is critical**
+   - Define JavaScript functions BEFORE the HTML that uses `x-data`
+   - Use `<template x-for>` instead of Jinja `{% for %}` when accessing Alpine.js component scope
+   - Always use `{{ data|tojson|safe }}` when passing Python data to JavaScript
+
+3. **User selections must be preserved when editing**
+   - Fetch existing picks from database
+   - Pass to Alpine.js component initialization: `draftPicker({{ selected_codes|tojson|safe }}, ...)`
+
+4. **Form submission needs proper navigation warning handling**
+   - Add `isSubmitting` flag to prevent false "leave site?" warnings
+
+5. **Database operations should be atomic**
+   - Use `BEGIN`/`COMMIT`/`ROLLBACK` for multi-step operations (especially saving picks)
+
+6. **Enable Flask debug mode during development**
+   - Add `FLASK_DEBUG=True` to `.env` for auto-reload on code changes
+
+See `CLAUDE.md` sections "Common Pitfalls & Solutions" and "Implementation Checklist" for complete details.
+
+### 12.5 Companion Documents
 The following companion documents provide additional detail for implementation:
 
 | Document | Purpose |
 |----------|---------|
-| `CLAUDE.md` | Technical guidance for Claude Code during development |
+| `CLAUDE.md` | **MUST READ** - Technical guidance with common pitfalls, solutions, and implementation checklist |
 | `countries.sql` | Country data with costs for Milano Cortina 2026 (import into SQLite) |
 | `color-palette.md` | Color palette inspired by Milano Cortina 2026 brand |
 | `MiCo2026_Country_Pricing.xlsx` | Source spreadsheet for country pricing |
@@ -682,3 +711,4 @@ The following companion documents provide additional detail for implementation:
 | 1.3 | Jan 12, 2025 | Ken + Claude | Added iso_code for flag images, pre-calculated points field in medals table |
 | 1.4 | Jan 12, 2025 | Ken + Claude | Fixed tiebreaker order (points first), allow ties, simplified auth to Flask sessions |
 | 1.5 | Jan 12, 2025 | Ken + Claude | Added unhappy path flows and UX polish guidelines to CLAUDE.md |
+| 1.6 | Jan 14, 2025 | Ken + Claude | Added comprehensive "Common Pitfalls & Solutions" section to CLAUDE.md with all implementation learnings |
