@@ -136,11 +136,7 @@ def validate_picks(country_codes):
     db = get_db()
 
     # Get contest config
-    contest = db.execute('SELECT budget, max_countries, state FROM contest WHERE id = 1').fetchone()
-
-    # Check contest state (redundant with @require_state but defensive)
-    if contest['state'] != 'open':
-        return False, "Contest is not open for picks."
+    contest = db.execute('SELECT budget, max_countries FROM contest WHERE id = 1').fetchone()
 
     # Check count
     if len(country_codes) == 0:

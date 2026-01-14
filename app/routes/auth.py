@@ -66,7 +66,9 @@ def register_routes(app):
                     success, error_msg = create_magic_link_token(db, user_id)
                     if not success:
                         db.rollback()
-                        flash(error_msg, 'error')
+                        # Generic error to avoid account enumeration
+                        flash("Unable to complete registration. Please try again later.", 'error')
+                        logger.warning(f"Token creation failed during registration: {error_msg}")
                         return render_template('auth/register.html',
                                              email=email, name=name, team_name=team_name)
                     db.commit()
@@ -146,14 +148,17 @@ def register_routes(app):
         db = get_db()
 
         # Find valid token
+        # Use SQLite datetime for consistent timestamp comparison
         token_row = db.execute('''
             SELECT * FROM tokens
             WHERE token_hash = ?
-            AND used_at IS NULL AND expires_at > ?
-        ''', [token_hash, datetime.now(timezone.utc).isoformat()]).fetchone()
+            AND used_at IS NULL AND expires_at > datetime('now')
+        ''', [token_hash]).fetchone()
 
         if not token_row:
+            logger.warning(f"Invalid magic link attempt: token_hash={token_hash[:8]}...")
             flash('This link has expired or already been used.', 'error')
+            session.pop('magic_link', None)  # Clear invalid link from session
             return redirect(url_for('login'))
 
         # Mark token as used

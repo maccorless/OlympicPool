@@ -63,7 +63,7 @@ CREATE TABLE contest (
 
 -- Users
 CREATE TABLE users (
-    id TEXT PRIMARY KEY,  -- UUID
+    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- Auto-incrementing integer (simpler for single-instance SQLite)
     email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
     team_name TEXT NOT NULL,  -- User's fantasy team name
@@ -119,7 +119,7 @@ CREATE TABLE system_meta (
 
 -- Indexes
 CREATE INDEX idx_picks_user ON picks(user_id);
-CREATE INDEX idx_tokens_email ON tokens(email);
+CREATE INDEX idx_tokens_user_created ON tokens(user_id, created_at);  -- Compound index for rate limiting
 CREATE INDEX idx_tokens_expires ON tokens(expires_at);
 
 -- Initialize contest with default values
