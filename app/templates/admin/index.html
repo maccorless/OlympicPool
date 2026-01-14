@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
+        <p class="text-gray-600">Contest management and oversight</p>
+    </div>
+
+    <!-- Contest Status Card -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Contest Status</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+                <div class="text-sm text-gray-600 mb-1">Name</div>
+                <div class="text-lg font-semibold text-gray-900">{{ contest['name'] }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 mb-1">State</div>
+                <div class="text-lg font-semibold">
+                    {% if contest['state'] == 'setup' %}
+                        <span class="text-gray-500">Setup</span>
+                    {% elif contest['state'] == 'open' %}
+                        <span class="text-green-600">Open</span>
+                    {% elif contest['state'] == 'locked' %}
+                        <span class="text-blue-600">Locked</span>
+                    {% elif contest['state'] == 'complete' %}
+                        <span class="text-purple-600">Complete</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 mb-1">Budget</div>
+                <div class="text-lg font-semibold text-gray-900">{{ contest['budget'] }}</div>
+            </div>
+            <div>
+                <div class="text-sm text-gray-600 mb-1">Max Countries</div>
+                <div class="text-lg font-semibold text-gray-900">{{ contest['max_countries'] }}</div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <div class="text-sm text-gray-600 mb-1">Deadline</div>
+            <div class="text-lg font-semibold text-gray-900">{{ contest['deadline'] }}</div>
+        </div>
+        <div class="mt-6">
+            <a href="{{ url_for('admin_contest') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Edit Contest Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Total Users -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-2xl">👥</div>
+                <div class="text-3xl font-bold text-blue-600">{{ total_users }}</div>
+            </div>
+            <div class="text-sm text-gray-600">Total Users</div>
+        </div>
+
+        <!-- Users with Picks -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-2xl">✅</div>
+                <div class="text-3xl font-bold text-green-600">{{ users_with_picks }}</div>
+            </div>
+            <div class="text-sm text-gray-600">Users with Picks</div>
+        </div>
+
+        <!-- Active Countries -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-2xl">🌍</div>
+                <div class="text-3xl font-bold text-purple-600">{{ total_countries }}</div>
+            </div>
+            <div class="text-sm text-gray-600">Active Countries</div>
+        </div>
+
+        <!-- Medals Entered -->
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="flex items-center justify-between mb-2">
+                <div class="text-2xl">🏅</div>
+                <div class="text-3xl font-bold text-yellow-600">{{ total_medals_entered }}</div>
+            </div>
+            <div class="text-sm text-gray-600">Countries with Medals</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="{{ url_for('admin_contest') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+                <div class="text-lg mb-1">⚙️ Contest Settings</div>
+                <div class="text-xs text-gray-600">Edit name, state, budget, deadline</div>
+            </a>
+            <a href="{{ url_for('admin_countries') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+                <div class="text-lg mb-1">🌍 Countries</div>
+                <div class="text-xs text-gray-600">Import and manage countries</div>
+            </a>
+            <a href="{{ url_for('admin_medals') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+                <div class="text-lg mb-1">🏅 Medal Entry</div>
+                <div class="text-xs text-gray-600">Update medal counts manually</div>
+            </a>
+            <a href="{{ url_for('admin_users') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+                <div class="text-lg mb-1">👥 Users</div>
+                <div class="text-xs text-gray-600">View all registered users</div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

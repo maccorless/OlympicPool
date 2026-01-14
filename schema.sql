@@ -7,7 +7,7 @@
 -- Contest configuration (single row)
 CREATE TABLE contest (
     id INTEGER PRIMARY KEY CHECK (id = 1),  -- Enforce single row
-    name TEXT NOT NULL DEFAULT 'Milano Cortina 2026',
+    name TEXT NOT NULL DEFAULT 'XXV Winter Olympic Games',
     state TEXT NOT NULL DEFAULT 'setup' CHECK (state IN ('setup', 'open', 'locked', 'complete')),
     budget INTEGER NOT NULL DEFAULT 200,
     max_countries INTEGER NOT NULL DEFAULT 10,
@@ -82,4 +82,4 @@ CREATE INDEX idx_tokens_expires ON tokens(expires_at);
 
 -- Initialize contest with default values (idempotent)
 INSERT OR IGNORE INTO contest (id, name, state, budget, max_countries, deadline)
-VALUES (1, 'Milano Cortina 2026', 'setup', 200, 10, '2026-02-04T23:59:59Z');
+VALUES (1, 'XXV Winter Olympic Games', 'setup', 200, 10, '2026-02-04T23:59:59Z');

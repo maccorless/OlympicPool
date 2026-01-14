@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Medal Entry - Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Back to Dashboard -->
+    <div class="mb-4">
+        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Medal Entry</h1>
+        <p class="text-gray-600">Update medal counts for each country (points calculated automatically)</p>
+        <p class="text-sm text-gray-500 mt-2">💡 Tip: Start typing a country name to jump to that row. <a href="{{ url_for('admin_medals_bulk') }}" class="text-blue-600 hover:text-blue-800">Or bulk paste from Excel →</a></p>
+    </div>
+
+    <!-- Search indicator (hidden by default) -->
+    <div id="search-indicator" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg text-2xl font-mono z-50">
+        <span id="search-text"></span>
+    </div>
+
+    {% if countries|length == 0 %}
+    <!-- Empty State -->
+    <div class="bg-white shadow rounded-lg p-12 text-center">
+        <div class="text-6xl mb-4">🏅</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">No Countries</h2>
+        <p class="text-gray-600 mb-4">Import countries before entering medals.</p>
+        <a href="{{ url_for('admin_countries') }}" class="text-blue-600 hover:text-blue-800">
+            Go to Country Management →
+        </a>
+    </div>
+    {% else %}
+    <!-- Medal Entry Form -->
+    <form method="POST" action="{{ url_for('admin_medals', sort=sort_by, order=sort_order) }}">
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
+            <!-- Desktop View -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            {% set columns = [
+                                ('name', 'Country', 'text-left'),
+                                ('gold', '🥇 Gold', 'text-center'),
+                                ('silver', '🥈 Silver', 'text-center'),
+                                ('bronze', '🥉 Bronze', 'text-center'),
+                                ('points', 'Points', 'text-center')
+                            ] %}
+                            {% for col_key, col_name, align_class in columns %}
+                            <th class="px-6 py-2 {{ align_class }}">
+                                {% set new_order = 'asc' if col_key != sort_by else ('desc' if sort_order == 'asc' else 'asc') %}
+                                <a href="{{ url_for('admin_medals', sort=col_key, order=new_order) }}"
+                                   class="group inline-flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
+                                    {{ col_name }}
+                                    {% if sort_by == col_key %}
+                                        {% if sort_order == 'asc' %}
+                                        <span class="text-blue-600">↑</span>
+                                        {% else %}
+                                        <span class="text-blue-600">↓</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-gray-300 group-hover:text-gray-400">↕</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for country in countries %}
+                        <tr data-country-name="{{ country.name|lower }}" class="country-row">
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                                         alt="{{ country.name }}"
+                                         class="w-8 h-5 mr-3 object-cover">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                                        <div class="text-xs text-gray-500">{{ country.code }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap text-center">
+                                <input type="number" name="gold_{{ country.code }}" value="{{ country.gold }}" min="0"
+                                       class="w-20 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap text-center">
+                                <input type="number" name="silver_{{ country.code }}" value="{{ country.silver }}" min="0"
+                                       class="w-20 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap text-center">
+                                <input type="number" name="bronze_{{ country.code }}" value="{{ country.bronze }}" min="0"
+                                       class="w-20 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap text-center">
+                                <div class="text-sm font-bold text-purple-600">{{ country.points }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile View -->
+            <div class="md:hidden divide-y divide-gray-200">
+                {% for country in countries %}
+                <div class="p-4">
+                    <div class="flex items-center mb-3">
+                        <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                             alt="{{ country.name }}"
+                             class="w-8 h-5 mr-3 object-cover">
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                            <div class="text-xs text-gray-500">{{ country.code }} • {{ country.points }} pts</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">🥇 Gold</label>
+                            <input type="number" name="gold_{{ country.code }}" value="{{ country.gold }}" min="0"
+                                   class="w-full px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">🥈 Silver</label>
+                            <input type="number" name="silver_{{ country.code }}" value="{{ country.silver }}" min="0"
+                                   class="w-full px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1">🥉 Bronze</label>
+                            <input type="number" name="bronze_{{ country.code }}" value="{{ country.bronze }}" min="0"
+                                   class="w-full px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+                Points calculated: Gold × 3 + Silver × 2 + Bronze × 1
+            </div>
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                Save Medal Counts
+            </button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+
+<script>
+// Type-to-search functionality
+(function() {
+    let searchBuffer = '';
+    let searchTimeout = null;
+    let currentHighlight = null;
+
+    // Show search indicator
+    function showSearchIndicator(text) {
+        const indicator = document.getElementById('search-indicator');
+        const textSpan = document.getElementById('search-text');
+        if (indicator && textSpan) {
+            textSpan.textContent = text;
+            indicator.classList.remove('hidden');
+        }
+    }
+
+    // Hide search indicator
+    function hideSearchIndicator() {
+        const indicator = document.getElementById('search-indicator');
+        if (indicator) {
+            indicator.classList.add('hidden');
+        }
+    }
+
+    // Clear highlight from previous match
+    function clearHighlight() {
+        if (currentHighlight) {
+            currentHighlight.classList.remove('bg-yellow-100');
+            currentHighlight = null;
+        }
+    }
+
+    // Find and scroll to matching country
+    function searchCountry(query) {
+        clearHighlight();
+
+        const rows = document.querySelectorAll('.country-row');
+        const lowerQuery = query.toLowerCase();
+
+        for (let row of rows) {
+            const countryName = row.getAttribute('data-country-name');
+            if (countryName && countryName.startsWith(lowerQuery)) {
+                // Highlight the row
+                row.classList.add('bg-yellow-100');
+                currentHighlight = row;
+
+                // Scroll to the row
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                break;
+            }
+        }
+    }
+
+    // Handle keypress
+    document.addEventListener('keydown', function(e) {
+        // Ignore if user is typing in an input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        // Ignore special keys (except backspace)
+        if (e.ctrlKey || e.metaKey || e.altKey) {
+            return;
+        }
+
+        // Handle backspace
+        if (e.key === 'Backspace') {
+            e.preventDefault();
+            searchBuffer = searchBuffer.slice(0, -1);
+            if (searchBuffer) {
+                showSearchIndicator(searchBuffer);
+                searchCountry(searchBuffer);
+            } else {
+                hideSearchIndicator();
+                clearHighlight();
+            }
+            resetTimeout();
+            return;
+        }
+
+        // Handle regular characters
+        if (e.key.length === 1 && /[a-zA-Z ]/.test(e.key)) {
+            e.preventDefault();
+            searchBuffer += e.key.toLowerCase();
+            showSearchIndicator(searchBuffer);
+            searchCountry(searchBuffer);
+            resetTimeout();
+        }
+    });
+
+    // Reset timeout to clear search buffer
+    function resetTimeout() {
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        searchTimeout = setTimeout(function() {
+            searchBuffer = '';
+            hideSearchIndicator();
+            clearHighlight();
+        }, 2000);
+    }
+})();
+</script>
+
+{% endblock %}

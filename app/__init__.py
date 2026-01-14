@@ -33,6 +33,12 @@ def create_app(test_config=None):
     from app import db
     db.init_app(app)
 
+    # Context processor to make user available in all templates
+    @app.context_processor
+    def inject_user():
+        from app.decorators import get_current_user
+        return {'user': get_current_user()}
+
     # Register all routes (imported here to avoid circular imports)
     from app.routes import auth, draft, leaderboard, admin
     auth.register_routes(app)

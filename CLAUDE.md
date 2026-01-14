@@ -141,7 +141,9 @@ VALUES (1, 'Milano Cortina 2026', 'setup', 200, 10, '2026-02-04T23:59:59Z');
 **Enforcement rules:**
 - `POST /draft/submit` returns 403 if state != `open`
 - `POST /draft/pick` returns 403 if state != `open`
-- `/leaderboard` returns 404 or redirect if state == `setup`
+- `/leaderboard` is visible in `open`, `locked`, and `complete` states (not `setup`)
+  - In `open` state: Shows team names only, everyone tied at rank #1, no flags/medals displayed
+  - In `locked`/`complete` states: Shows full leaderboard with flags, medals, and calculated ranks
 - `/admin/medals` only accessible if state IN (`locked`, `complete`)
 - State transitions: `setup` → `open` → `locked` → `complete` (no skipping, no going back)
 
@@ -161,7 +163,7 @@ VALUES (1, 'Milano Cortina 2026', 'setup', 200, 10, '2026-02-04T23:59:59Z');
 | GET | `/draft` | Yes | Page | Draft picker (state must be `open`) |
 | POST | `/draft/toggle` | Yes | Fragment | HTMX: toggle country selection, return updated picker state |
 | POST | `/draft/submit` | Yes | Redirect | Submit final picks (state must be `open`) |
-| GET | `/leaderboard` | No | Page | Public leaderboard (state must be `locked` or `complete`) |
+| GET | `/leaderboard` | No | Page | Public leaderboard (visible in `open`, `locked`, `complete`) |
 | GET | `/team/<user_id>` | No | Page | View user's picks and points breakdown |
 | GET | `/my-picks` | Yes | Page | Current user's picks (read-only if locked) |
 | GET | `/admin` | Admin | Page | Admin dashboard |
@@ -636,8 +638,11 @@ USA,US,United States,58,57
 
 ## Leaderboard Calculation
 
+### SQL Query with Sortable Columns
+
 ```sql
-SELECT 
+-- Base query structure (ORDER BY is dynamic based on sort parameters)
+SELECT
     u.id,
     u.name,
     u.team_name,
@@ -649,20 +654,174 @@ FROM users u
 JOIN picks p ON u.id = p.user_id
 LEFT JOIN medals m ON p.country_code = m.country_code
 GROUP BY u.id
-ORDER BY 
-    total_points DESC,
-    total_gold DESC,
-    total_silver DESC,
-    total_bronze DESC
+ORDER BY {order_clause}
 ```
 
-**Tiebreaker order:**
+**ORDER BY clause construction:**
+- Query parameters: `?sort=<column>&order=<asc|desc>`
+- Valid sort columns: `points`, `gold`, `silver`, `bronze`, `team_name`
+- Default: `sort=points&order=desc`
+
+**Important: F-string usage for ORDER BY is safe ONLY when:**
+- `sort_by` is validated against whitelist
+- `sort_order` is validated against ('asc', 'desc')
+- Actual column names are dynamic, user data is parameterized
+
+```python
+# Example ORDER BY construction
+valid_sorts = ['points', 'gold', 'silver', 'bronze', 'team_name']
+if sort_by not in valid_sorts:
+    sort_by = 'points'
+if sort_order not in ('asc', 'desc'):
+    sort_order = 'desc'
+
+if sort_order == 'desc':
+    order_clause = f'''
+        total_{sort_by} DESC,
+        total_points DESC,
+        total_gold DESC,
+        total_silver DESC,
+        total_bronze DESC,
+        u.team_name ASC
+    '''
+```
+
+### Rank Calculation
+
+**Ranks are ALWAYS based on points tiebreaker rules, regardless of display sort order.**
+
+Tiebreaker order for rank:
 1. Total points (desc)
 2. Gold medals (desc)
 3. Silver medals (desc)
 4. Bronze medals (desc)
 
+**Implementation pattern:**
+1. Execute SQL query with user-selected sort order
+2. Calculate ranks in Python using points-based sort (ignoring display order)
+3. Store ranks in `rank_map` dictionary
+4. Apply ranks to teams after SQL sort
+
+```python
+# Pre-calculate ranks based on points tiebreaker
+teams_for_ranking = sorted(
+    [dict(t) for t in teams],
+    key=lambda x: (x['total_points'], x['total_gold'], x['total_silver'], x['total_bronze']),
+    reverse=True
+)
+
+rank_map = {}
+current_rank = 1
+prev_scores = None
+
+for i, team in enumerate(teams_for_ranking):
+    current_scores = (team['total_points'], team['total_gold'], team['total_silver'], team['total_bronze'])
+
+    if prev_scores is not None and current_scores != prev_scores:
+        current_rank = i + 1
+
+    rank_map[team['id']] = current_rank
+    prev_scores = current_scores
+
+# Apply ranks to SQL-sorted teams
+for team in teams_list:
+    team['rank'] = rank_map[team['id']]
+```
+
+**Display order tiebreaker:**
+- `u.team_name ASC` is always the LAST item in ORDER BY
+- This ensures stable sort for tied teams
+- team_name affects display order but NOT rank
+
 **If still tied after all tiebreakers, teams share the same rank.** Display tied teams at the same position (e.g., two teams at #3, next team is #5).
+
+### Performance Optimization: Avoiding N+1 Queries
+
+**Problem:** Fetching countries for each team in a loop creates N+1 queries:
+```python
+# ❌ WRONG - N+1 query problem
+for team in teams:
+    countries = db.execute('''
+        SELECT c.code, c.iso_code, c.name
+        FROM picks p
+        JOIN countries c ON p.country_code = c.code
+        WHERE p.user_id = ?
+    ''', [team['id']]).fetchall()
+    team['countries'] = countries  # 50 teams = 50 queries!
+```
+
+**Solution:** Fetch all countries in single query, group in Python:
+```python
+# ✅ CORRECT - Single query for all teams
+user_ids = [team['id'] for team in teams]
+if user_ids:
+    placeholders = ','.join('?' * len(user_ids))
+    all_countries = db.execute(f'''
+        SELECT p.user_id, c.code, c.iso_code, c.name
+        FROM picks p
+        JOIN countries c ON p.country_code = c.code
+        WHERE p.user_id IN ({placeholders})
+        ORDER BY p.user_id, c.name
+    ''', user_ids).fetchall()
+
+    # Group countries by user_id in Python
+    countries_by_user = {}
+    for row in all_countries:
+        user_id = row['user_id']
+        if user_id not in countries_by_user:
+            countries_by_user[user_id] = []
+        countries_by_user[user_id].append({
+            'code': row['code'],
+            'iso_code': row['iso_code'],
+            'name': row['name']
+        })
+
+# Now apply to teams
+for team in teams_list:
+    team['countries'] = countries_by_user.get(team['id'], [])
+```
+
+**Result:** 50 teams with picks: 51 queries → 3 queries (~80% reduction)
+
+### Flag Image Performance
+
+**Problem:** Country flag tooltips are slow to display on hover.
+
+**Solution - Multi-layer approach:**
+
+1. **DNS preconnect in base.html:**
+```html
+<link rel="preconnect" href="https://flagcdn.com">
+<link rel="dns-prefetch" href="https://flagcdn.com">
+```
+
+2. **Eager loading:**
+```html
+<img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+     loading="eager"
+     class="w-6 h-4 object-cover">
+```
+
+3. **Hardware acceleration CSS:**
+```css
+.flag-container img {
+    will-change: transform;
+    backface-visibility: hidden;
+}
+```
+
+4. **JavaScript preload (locked/complete states only):**
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+    const flagImages = document.querySelectorAll('.flag-container img');
+    flagImages.forEach(img => {
+        const preloadImg = new Image();
+        preloadImg.src = img.src;  // Force browser cache
+    });
+});
+```
+
+**Note:** Browser caching handles subsequent page loads automatically.
 
 ---
 
@@ -831,6 +990,52 @@ olympic-medal-pool/
 ## Common Pitfalls & Solutions
 
 This section documents issues encountered during implementation and their solutions. **Read this before implementing to avoid these mistakes.**
+
+### 0. N+1 Query Problem (CRITICAL Performance Issue)
+
+**Problem:** Fetching related data in loops creates one query per iteration.
+
+```python
+# ❌ WRONG - For 50 teams, this executes 51 queries (1 + 50)
+teams = db.execute('SELECT * FROM users').fetchall()
+for team in teams:
+    countries = db.execute('''
+        SELECT * FROM countries
+        JOIN picks ON countries.code = picks.country_code
+        WHERE picks.user_id = ?
+    ''', [team['id']]).fetchall()
+```
+
+**Solution:** Fetch all related data in single query, group in Python.
+
+```python
+# ✅ CORRECT - Only 2 queries total
+teams = db.execute('SELECT * FROM users').fetchall()
+
+# Fetch ALL countries for ALL teams at once
+user_ids = [t['id'] for t in teams]
+placeholders = ','.join('?' * len(user_ids))
+all_countries = db.execute(f'''
+    SELECT p.user_id, c.code, c.name
+    FROM picks p
+    JOIN countries c ON p.country_code = c.code
+    WHERE p.user_id IN ({placeholders})
+''', user_ids).fetchall()
+
+# Group in Python
+countries_by_user = {}
+for row in all_countries:
+    if row['user_id'] not in countries_by_user:
+        countries_by_user[row['user_id']] = []
+    countries_by_user[row['user_id']].append(row)
+```
+
+**When this matters:**
+- Leaderboard (showing countries for each team)
+- Admin user list (showing pick counts)
+- Any list view with related data
+
+**Performance impact:** 51 queries → 2 queries (~96% reduction for 50 teams)
 
 ### 1. SQLite Row Objects Are Not JSON Serializable
 
@@ -1335,6 +1540,14 @@ Before considering the app complete, verify:
 - [ ] Admin can update medal counts (points auto-calculated)
 - [ ] Admin can change contest state
 - [ ] Mobile leaderboard is readable and functional
+- [ ] Leaderboard columns are sortable (desktop)
+- [ ] Rank stays with team regardless of sort column
+- [ ] Country flags display next to team names
+- [ ] Flags support two-row layout for 5+ countries
+- [ ] Flag hover shows country name instantly
+- [ ] Current user's row is highlighted
+- [ ] Last updated timestamp shows when medals were updated
+- [ ] No N+1 query problems (check query count for 50 teams)
 
 **Unhappy Paths:**
 - [ ] Expired magic link shows friendly error + link to request new one
@@ -1347,7 +1560,9 @@ Before considering the app complete, verify:
 
 **State Enforcement:**
 - [ ] @require_state decorator blocks actions in wrong state
-- [ ] Leaderboard hidden in 'setup' and 'open' states
+- [ ] Leaderboard hidden in 'setup' state only
+- [ ] Leaderboard shows team names only in 'open' state (everyone rank #1)
+- [ ] Leaderboard shows full data in 'locked' and 'complete' states
 - [ ] Draft submission blocked in 'locked' and 'complete' states
 - [ ] Medal entry only allowed in 'locked' and 'complete' states
 
