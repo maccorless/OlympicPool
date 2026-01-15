@@ -7,6 +7,9 @@ from datetime import timedelta
 # Flask secret key
 SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-for-local-testing-only')
 
+# Debug mode (auto-reload on code changes)
+DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+
 # Base URL for magic links
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
 

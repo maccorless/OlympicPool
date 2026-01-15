@@ -478,3 +478,34 @@ def register_routes(app):
         admin_emails = app.config.get('ADMIN_EMAILS', [])
 
         return render_template('admin/users.html', user=user, users=users, admin_emails=admin_emails)
+
+    @app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+    @admin_required
+    def admin_user_delete(user_id):
+        """Delete a user and their picks."""
+        db = get_db()
+        current = get_current_user()
+
+        # Check if user exists
+        target_user = db.execute('SELECT * FROM users WHERE id = ?', [user_id]).fetchone()
+        if not target_user:
+            flash('User not found.', 'error')
+            return redirect(url_for('admin_users'))
+
+        # Prevent deleting yourself
+        if target_user['id'] == current['id']:
+            flash('You cannot delete your own account.', 'error')
+            return redirect(url_for('admin_users'))
+
+        # Delete user (CASCADE will delete picks automatically)
+        try:
+            db.execute('DELETE FROM users WHERE id = ?', [user_id])
+            db.commit()
+            logger.info(f"User deleted by {current['email']}: {target_user['email']}")
+            flash(f'User {target_user["name"]} ({target_user["email"]}) deleted successfully.', 'success')
+        except sqlite3.Error as e:
+            db.rollback()
+            logger.error(f"Failed to delete user {user_id}: {e}")
+            flash('Failed to delete user.', 'error')
+
+        return redirect(url_for('admin_users'))

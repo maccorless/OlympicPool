@@ -55,6 +55,7 @@ def register_routes(app):
 
             if not existing:
                 # Create new user + token atomically (transaction)
+                magic_link_result = None
                 try:
                     db.execute('BEGIN')
                     db.execute(
@@ -63,15 +64,19 @@ def register_routes(app):
                     )
                     # Create token within same transaction
                     user_id = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()['id']
-                    success, error_msg = create_magic_link_token(db, user_id)
+                    success, result = create_magic_link_token(db, user_id)
                     if not success:
                         db.rollback()
                         # Generic error to avoid account enumeration
                         flash("Unable to complete registration. Please try again later.", 'error')
-                        logger.warning(f"Token creation failed during registration: {error_msg}")
+                        logger.warning(f"Token creation failed during registration: {result}")
                         return render_template('auth/register.html',
                                              email=email, name=name, team_name=team_name)
+                    magic_link_result = result
                     db.commit()
+                    # In NO_EMAIL_MODE, result contains the magic link
+                    if magic_link_result and magic_link_result.startswith('http'):
+                        return render_template('auth/check_email.html', magic_link=magic_link_result)
                 except sqlite3.IntegrityError:
                     # Race condition: another request created this user
                     db.rollback()
@@ -85,12 +90,15 @@ def register_routes(app):
                                          email=email, name=name, team_name=team_name)
             else:
                 # Existing user - just create token
-                success, error_msg = create_magic_link_token(db, existing['id'])
+                success, result = create_magic_link_token(db, existing['id'])
                 if not success:
-                    flash(error_msg, 'error')
+                    flash(result, 'error')
                     return render_template('auth/register.html',
                                          email=email, name=name, team_name=team_name)
                 db.commit()
+                # In NO_EMAIL_MODE, result contains the magic link
+                if result and result.startswith('http'):
+                    return render_template('auth/check_email.html', magic_link=result)
 
             return redirect(url_for('check_email'))
 
@@ -117,13 +125,16 @@ def register_routes(app):
             user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
 
             if not user:
-                # Don't reveal account existence (prevent enumeration)
-                # Still show success message to avoid leaking information
-                flash('If an account exists with that email, we\'ve sent you a login link.', 'info')
-                return redirect(url_for('check_email'))
+                # In dev mode, show helpful message. In production, don't reveal account existence.
+                if current_app.config.get('NO_EMAIL_MODE'):
+                    flash('No account found with that email. Please register first.', 'error')
+                    return render_template('auth/login.html', email=email)
+                else:
+                    flash('If an account exists with that email, we\'ve sent you a login link.', 'info')
+                    return redirect(url_for('check_email'))
 
             # Create magic link token
-            success, error_msg = create_magic_link_token(db, user['id'])
+            success, result = create_magic_link_token(db, user['id'])
 
             if not success:
                 # Generic error to avoid enumeration
@@ -131,6 +142,11 @@ def register_routes(app):
                 return render_template('auth/login.html', email=email)
 
             db.commit()
+
+            # In NO_EMAIL_MODE, result contains the magic link - render directly
+            if result and result.startswith('http'):
+                return render_template('auth/check_email.html', magic_link=result)
+
             flash('Check your email for a login link.', 'info')
             return redirect(url_for('check_email'))
 
@@ -158,7 +174,6 @@ def register_routes(app):
         if not token_row:
             logger.warning(f"Invalid magic link attempt: token_hash={token_hash[:8]}...")
             flash('This link has expired or already been used.', 'error')
-            session.pop('magic_link', None)  # Clear invalid link from session
             return redirect(url_for('login'))
 
         # Mark token as used
@@ -176,9 +191,6 @@ def register_routes(app):
         # Set session
         session.permanent = True
         session['user_id'] = user['id']
-
-        # Clear any stored magic_link from session
-        session.pop('magic_link', None)
 
         db.commit()
 
@@ -232,11 +244,10 @@ def create_magic_link_token(db, user_id):
     # Build magic link URL using url_for
     magic_link = url_for('verify_magic_link', token=token, _external=True)
 
-    # NO_EMAIL_MODE: store link in session to show on page
+    # NO_EMAIL_MODE: return link directly so caller can display it
     if current_app.config.get('NO_EMAIL_MODE'):
-        session['magic_link'] = magic_link
         logger.info(f"NO_EMAIL_MODE: Magic link for {user['email']}: {magic_link}")
-        return True, None
+        return True, magic_link
 
     # Production: send email via Resend
     if current_app.config.get('RESEND_API_KEY'):
@@ -273,16 +284,13 @@ Olympic Medal Pool - XXV Winter Olympic Games
                 "reply_to": current_app.config['FROM_EMAIL']
             })
 
-            # Clear any old magic_link from session (from previous dev mode usage)
-            session.pop('magic_link', None)
-
             logger.info(f"Magic link email sent to {user['email']}")
             return True, None
         except Exception as e:
             logger.error(f"Failed to send email via Resend to {user['email']}: {e}")
             # Fall through to console fallback
 
-    # Fallback: print to console (dev mode or Resend failure)
+    # Fallback: print to console (Resend failure) and return link
     logger.warning(f"Email not sent (Resend unavailable). Magic link for {user['email']}: {magic_link}")
     print(f"\n{'='*60}")
     print(f"MAGIC LINK FOR: {user['email']}")
@@ -290,7 +298,4 @@ Olympic Medal Pool - XXV Winter Olympic Games
     print(magic_link)
     print(f"{'='*60}\n")
 
-    # Store in session for display in fallback mode
-    session['magic_link'] = magic_link
-
-    return True, None
+    return True, magic_link
