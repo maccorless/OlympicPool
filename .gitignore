@@ -194,6 +194,21 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Excel temp files
+~$*.xlsx
+~$*.xls
+
+# Temp test/debug scripts
+check_config.py
+debug_config.py
+test_domain.py
+test_email.py
+
 # Cursor
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
