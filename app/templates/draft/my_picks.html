@@ -58,7 +58,6 @@
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Pts</th>
                     {% if contest_state in ['locked', 'complete'] %}
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥇</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥈</th>
@@ -83,9 +82,6 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-semibold text-blue-600">{{ pick.cost }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ pick.expected_points }}</div>
                     </td>
                     {% if contest_state in ['locked', 'complete'] %}
                     <td class="px-6 py-4 whitespace-nowrap text-center">

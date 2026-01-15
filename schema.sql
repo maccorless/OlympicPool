@@ -81,5 +81,6 @@ CREATE INDEX idx_tokens_expires ON tokens(expires_at);
 -- ============================================================================
 
 -- Initialize contest with default values (idempotent)
+-- Deadline: Feb 4, 2026 at 18:00 CET (17:00 UTC)
 INSERT OR IGNORE INTO contest (id, name, state, budget, max_countries, deadline)
-VALUES (1, 'XXV Winter Olympic Games', 'setup', 200, 10, '2026-02-04T23:59:59Z');
+VALUES (1, 'XXV Winter Olympic Games', 'setup', 200, 10, '2026-02-04T17:00:00Z');
