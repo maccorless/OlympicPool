@@ -5,16 +5,27 @@ Simple, flat route registration without blueprints.
 import os
 from flask import Flask
 
+# CRITICAL: Load .env BEFORE importing any app modules that use config
+import os as _os
+try:
+    from dotenv import load_dotenv, find_dotenv
+
+    # Find .env file explicitly
+    dotenv_path = find_dotenv()
+    if dotenv_path:
+        print(f"🔍 Loading .env from: {dotenv_path}")
+        load_dotenv(dotenv_path, override=True)
+        print(f"   NO_EMAIL_MODE after load_dotenv: {_os.getenv('NO_EMAIL_MODE')}")
+    else:
+        print("⚠️  WARNING: No .env file found!")
+
+except ImportError:
+    print("⚠️  WARNING: python-dotenv not installed")
+    pass  # python-dotenv not installed, will use environment variables
+
 
 def create_app(test_config=None):
     """Create and configure the Flask application."""
-    # Load .env file (optional - falls back to environment variables)
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except ImportError:
-        pass  # python-dotenv not installed, will use environment variables
-
     app = Flask(__name__, instance_relative_config=True)
 
     # Load configuration

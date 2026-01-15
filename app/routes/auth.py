@@ -248,12 +248,34 @@ def create_magic_link_token(db, user_id):
                                    name=user['name'],
                                    magic_link=magic_link)
 
+            # Plain text version (improves deliverability)
+            text = f"""
+Hi {user['name']},
+
+Click the link below to log in to your Olympic Medal Pool account:
+
+{magic_link}
+
+This link will expire in 1 hour.
+
+If you didn't request this, you can safely ignore this email.
+
+---
+Olympic Medal Pool - XXV Winter Olympic Games
+            """.strip()
+
             resend.Emails.send({
                 "from": current_app.config['FROM_EMAIL'],
                 "to": user['email'],
-                "subject": "Your Olympic Medal Pool Login Link",
-                "html": html
+                "subject": f"Your login link for {user['name']}'s team",
+                "html": html,
+                "text": text,
+                "reply_to": current_app.config['FROM_EMAIL']
             })
+
+            # Clear any old magic_link from session (from previous dev mode usage)
+            session.pop('magic_link', None)
+
             logger.info(f"Magic link email sent to {user['email']}")
             return True, None
         except Exception as e:

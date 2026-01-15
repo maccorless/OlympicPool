@@ -2,17 +2,33 @@
 Route decorators for authentication and authorization.
 """
 from functools import wraps
-from flask import session, redirect, url_for, abort, current_app
+from flask import session, redirect, url_for, abort, current_app, g
 from app.db import get_db
 
 
 def get_current_user():
-    """Get current user from session."""
+    """
+    Get current user from session, cached in g for request lifetime.
+
+    This function caches the user in Flask's g object to avoid redundant
+    database queries within a single request. The cache is automatically
+    cleared at the end of each request.
+    """
+    # Return cached user if we already fetched it this request
+    if 'cached_user' in g:
+        return g.cached_user
+
     user_id = session.get('user_id')
     if not user_id:
+        g.cached_user = None
         return None
+
     db = get_db()
-    return db.execute('SELECT * FROM users WHERE id = ?', [user_id]).fetchone()
+    user = db.execute('SELECT * FROM users WHERE id = ?', [user_id]).fetchone()
+
+    # Cache for this request
+    g.cached_user = user
+    return user
 
 
 def login_required(f):
