@@ -32,4 +32,6 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Database
-DATABASE = os.path.join(os.path.dirname(__file__), '..', 'instance', 'medal_pool.db')
+# Use Railway volume path if available, otherwise local instance folder
+DATABASE_DIR = os.getenv('DATABASE_DIR', os.path.join(os.path.dirname(__file__), '..', 'instance'))
+DATABASE = os.path.join(DATABASE_DIR, 'medal_pool.db')
