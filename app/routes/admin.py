@@ -236,6 +236,9 @@ def register_routes(app):
                     medal_type, country_code = key.split('_', 1)
                     try:
                         count = int(value) if value else 0
+                        if count < 0:
+                            flash(f'{country_code} {medal_type} count must be non-negative.', 'error')
+                            return redirect(url_for('admin_medals'))
                         updates.append((medal_type, country_code, count))
                     except ValueError:
                         flash(f'Invalid value for {country_code} {medal_type}.', 'error')
@@ -382,6 +385,10 @@ def register_routes(app):
                         gold = int(cells[gold_idx].strip() or 0)
                         silver = int(cells[silver_idx].strip() or 0)
                         bronze = int(cells[bronze_idx].strip() or 0)
+
+                        if gold < 0 or silver < 0 or bronze < 0:
+                            flash(f'Line {line_num}: Medal counts must be non-negative for {country_name}.', 'error')
+                            return redirect(url_for('admin_medals_bulk'))
                     except (ValueError, IndexError):
                         flash(f'Line {line_num}: Invalid medal counts for {country_name}.', 'error')
                         return redirect(url_for('admin_medals_bulk'))

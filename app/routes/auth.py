@@ -81,7 +81,18 @@ def register_routes(app):
                     # Race condition: another request created this user
                     db.rollback()
                     logger.warning(f"Race condition on user creation for {email}")
-                    # User exists now, fall through to send magic link
+                    # User exists now, send magic link
+                    user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
+                    if user:
+                        success, result = create_magic_link_token(db, user['id'])
+                        if success:
+                            db.commit()
+                            if result and result.startswith('http'):
+                                return render_template('auth/check_email.html', magic_link=result)
+                        else:
+                            flash("Unable to send login link. Please try again.", 'error')
+                            return render_template('auth/register.html',
+                                                 email=email, name=name, team_name=team_name)
                 except sqlite3.Error as e:
                     db.rollback()
                     logger.error(f"Database error during registration for {email}: {e}")
@@ -164,11 +175,11 @@ def register_routes(app):
         db = get_db()
 
         # Find valid token
-        # Use SQLite datetime for consistent timestamp comparison
+        # Use SQLite UTC datetime for consistent timestamp comparison
         token_row = db.execute('''
             SELECT * FROM tokens
             WHERE token_hash = ?
-            AND used_at IS NULL AND expires_at > datetime('now')
+            AND used_at IS NULL AND expires_at > datetime('now', 'utc')
         ''', [token_hash]).fetchone()
 
         if not token_row:
@@ -217,10 +228,10 @@ def create_magic_link_token(db, user_id):
         return False, "User not found."
 
     # Rate limiting: max 3 tokens per user per hour
-    # Use SQLite's datetime function for consistent timestamp comparison
+    # Use SQLite's UTC datetime function for consistent timestamp comparison
     recent_tokens = db.execute('''
         SELECT COUNT(*) as count FROM tokens
-        WHERE user_id = ? AND created_at > datetime('now', '-1 hour')
+        WHERE user_id = ? AND created_at > datetime('now', 'utc', '-1 hour')
     ''', [user_id]).fetchone()
 
     if recent_tokens['count'] >= 3:
