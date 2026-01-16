@@ -26,7 +26,12 @@ FROM_EMAIL = os.getenv('FROM_EMAIL', 'Olympic Medal Pool <noreply@yourdomain.com
 NO_EMAIL_MODE = os.getenv('NO_EMAIL_MODE', 'True').lower() == 'true'
 
 # Session configuration
-PERMANENT_SESSION_LIFETIME = timedelta(days=21)
+# Sessions valid until end of contest (March 31, 2026)
+# Calculate days from now to end of contest (with buffer for early deployments)
+from datetime import datetime
+_contest_end = datetime(2026, 3, 31, 23, 59, 59)
+_days_until_end = (_contest_end - datetime.now()).days + 1
+PERMANENT_SESSION_LIFETIME = timedelta(days=max(_days_until_end, 365))  # At least 1 year
 SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
