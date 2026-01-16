@@ -240,7 +240,8 @@ def create_magic_link_token(db, user_id):
     # Generate token
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    # Magic links valid until end of March 2026
+    expires_at = datetime(2026, 3, 31, 23, 59, 59, tzinfo=timezone.utc)
 
     # Store token hash (without commit)
     try:

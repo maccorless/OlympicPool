@@ -17,7 +17,9 @@ try:
         load_dotenv(dotenv_path, override=True)
         print(f"   NO_EMAIL_MODE after load_dotenv: {_os.getenv('NO_EMAIL_MODE')}")
     else:
-        print("⚠️  WARNING: No .env file found!")
+        # Only warn if not running on Railway (Railway uses env vars directly)
+        if not _os.getenv('RAILWAY_ENVIRONMENT'):
+            print("⚠️  WARNING: No .env file found!")
 
 except ImportError:
     print("⚠️  WARNING: python-dotenv not installed")
