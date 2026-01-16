@@ -76,7 +76,7 @@ def register_routes(app):
                     db.commit()
                     # In NO_EMAIL_MODE, result contains the magic link
                     if magic_link_result and magic_link_result.startswith('http'):
-                        return render_template('auth/check_email.html', magic_link=magic_link_result)
+                        return render_template('auth/check_email.html', magic_link=magic_link_result, email=email)
                 except sqlite3.IntegrityError:
                     # Race condition: another request created this user
                     db.rollback()
@@ -88,7 +88,7 @@ def register_routes(app):
                         if success:
                             db.commit()
                             if result and result.startswith('http'):
-                                return render_template('auth/check_email.html', magic_link=result)
+                                return render_template('auth/check_email.html', magic_link=result, email=email)
                         else:
                             flash("Unable to send login link. Please try again.", 'error')
                             return render_template('auth/register.html',
@@ -109,7 +109,7 @@ def register_routes(app):
                 db.commit()
                 # In NO_EMAIL_MODE, result contains the magic link
                 if result and result.startswith('http'):
-                    return render_template('auth/check_email.html', magic_link=result)
+                    return render_template('auth/check_email.html', magic_link=result, email=email)
 
             return redirect(url_for('check_email'))
 
@@ -156,7 +156,7 @@ def register_routes(app):
 
             # In NO_EMAIL_MODE, result contains the magic link - render directly
             if result and result.startswith('http'):
-                return render_template('auth/check_email.html', magic_link=result)
+                return render_template('auth/check_email.html', magic_link=result, email=email)
 
             flash('Check your email for a login link.', 'info')
             return redirect(url_for('check_email'))

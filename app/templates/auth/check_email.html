@@ -9,6 +9,12 @@
             <!-- DEV MODE: Show magic link directly -->
             <div class="text-6xl mb-4">🔗</div>
             <h1 class="text-2xl font-bold text-gray-900 mb-4">Your Login Link</h1>
+            {% if email %}
+            <p class="text-gray-600 mb-2">
+                We sent a login link to:
+            </p>
+            <p class="text-blue-600 font-semibold mb-4">{{ email }}</p>
+            {% endif %}
             <p class="text-gray-600 mb-4">
                 Click the button below to log in:
             </p>
@@ -22,8 +28,14 @@
             <!-- PRODUCTION: Email sent -->
             <div class="text-6xl mb-4">📧</div>
             <h1 class="text-2xl font-bold text-gray-900 mb-4">Check Your Email</h1>
+            {% if email %}
+            <p class="text-gray-600 mb-2">
+                We sent a login link to:
+            </p>
+            <p class="text-blue-600 font-semibold mb-4">{{ email }}</p>
+            {% endif %}
             <p class="text-gray-600 mb-4">
-                We've sent you a login link. Click the link in the email to log in.
+                Click the link in the email to log in.
             </p>
 
             <!-- Spam folder warning -->
