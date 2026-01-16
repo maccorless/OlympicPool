@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env
+.env.local
+
+# Database (will be in volume)
+instance/
+*.db
+*.db-shm
+*.db-wal
+
+# Documentation
+*.md
+docs/
+PRD/
+
+# Tests
+tests/
+pytest.ini
+.pytest_cache/
+
+# MacOS
+.DS_Store
+
+# Railway
+.railway/
