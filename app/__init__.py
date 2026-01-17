@@ -15,7 +15,7 @@ try:
     if dotenv_path:
         print(f"🔍 Loading .env from: {dotenv_path}")
         load_dotenv(dotenv_path, override=True)
-        print(f"   NO_EMAIL_MODE after load_dotenv: {_os.getenv('NO_EMAIL_MODE')}")
+        print(f"   NO_SMS_MODE after load_dotenv: {_os.getenv('NO_SMS_MODE')}")
     else:
         # Only warn if not running on Railway (Railway uses env vars directly)
         if not _os.getenv('RAILWAY_ENVIRONMENT'):
@@ -68,42 +68,5 @@ def create_app(test_config=None):
         contest = db_conn.execute('SELECT state FROM contest WHERE id = 1').fetchone()
 
         return render_template('index.html', contest_state=contest['state'])
-
-    # One-time database setup endpoint (remove after first use)
-    @app.route('/reset-database-now')
-    def reset_database():
-        """DANGER: Delete old database and initialize with new schema. Visit this URL once after deployment."""
-        from flask import jsonify
-        from app.db import get_db, init_db, load_countries
-        import os
-
-        try:
-            # Close any existing connections
-            from flask import g
-            db = g.pop('db', None)
-            if db is not None:
-                db.close()
-
-            # Delete the old database file
-            db_path = app.config['DATABASE']
-            if os.path.exists(db_path):
-                os.remove(db_path)
-
-            # Create new database with new schema
-            init_db()
-            load_countries()
-
-            return jsonify({
-                'status': 'success',
-                'message': 'Database reset successfully! All old data deleted. New schema created.',
-                'next_step': 'Visit / to register with your phone number'
-            })
-        except Exception as e:
-            import traceback
-            return jsonify({
-                'status': 'error',
-                'message': str(e),
-                'traceback': traceback.format_exc()
-            }), 500
 
     return app

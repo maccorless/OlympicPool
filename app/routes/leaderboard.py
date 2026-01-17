@@ -1,12 +1,9 @@
 """
 Leaderboard routes: public leaderboard and team detail views.
 """
-import logging
 from flask import render_template, abort, request
 from app.db import get_db
 from app.decorators import get_current_user
-
-logger = logging.getLogger(__name__)
 
 
 def register_routes(app):
@@ -80,24 +77,32 @@ def register_routes(app):
             ORDER BY {order_clause}
         ''').fetchall()
 
-        # First, calculate ranks based on standard tiebreaker (always points-based)
-        # We need to sort by points temporarily to calculate correct ranks
+        # Calculate ranks based ONLY on points (and tiebreakers)
+        # NOTE: Rank is ALWAYS points-based, regardless of how the table is sorted
+        # This ensures consistent ranking even when users sort by name, gold medals, etc.
+        #
+        # Ranking tiebreaker order:
+        # 1. Total points (desc)
+        # 2. Gold medals (desc)
+        # 3. Silver medals (desc)
+        # 4. Bronze medals (desc)
+        # Tied teams get same rank with "=" suffix (e.g., "2=", "2=", "4")
+
         teams_for_ranking = sorted(
             [dict(t) for t in teams],
             key=lambda x: (x['total_points'], x['total_gold'], x['total_silver'], x['total_bronze']),
             reverse=True
         )
 
-        # Assign ranks with tie handling
+        # Two-pass algorithm: (1) assign ranks, (2) detect ties and add "=" suffix
         rank_map = {}
-        current_rank = 1
-        prev_scores = None
-        
-        # Pre-calculate counts for each rank to detect ties
         rank_counts = {}
         temp_ranks = []
-        
-        # First pass: determine raw ranks
+
+        current_rank = 1
+        prev_scores = None
+
+        # Pass 1: Assign rank numbers based on tiebreaker order
         for i, team in enumerate(teams_for_ranking):
             current_scores = (
                 team['total_points'],
@@ -106,21 +111,20 @@ def register_routes(app):
                 team['total_bronze']
             )
 
+            # New score group starts a new rank
             if prev_scores is not None and current_scores != prev_scores:
                 current_rank = i + 1
-            
-            # Store just the rank number for now
+
             temp_ranks.append((team['id'], current_rank))
             rank_counts[current_rank] = rank_counts.get(current_rank, 0) + 1
             prev_scores = current_scores
 
-        # Second pass: format rank strings
+        # Pass 2: Add "=" suffix to tied ranks
         for team_id, rank_num in temp_ranks:
-            # If more than one team has this rank, append '='
             if rank_counts[rank_num] > 1:
-                rank_map[team_id] = f"{rank_num}="
+                rank_map[team_id] = f"{rank_num}="  # Multiple teams at this rank
             else:
-                rank_map[team_id] = str(rank_num)
+                rank_map[team_id] = str(rank_num)    # Sole team at this rank
 
         # Fetch all countries for all teams in a single query (avoid N+1)
         user_ids = [team['id'] for team in teams]

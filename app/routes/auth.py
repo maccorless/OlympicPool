@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from flask import render_template, request, redirect, url_for, flash, session, current_app
 from app.db import get_db
-from app.services.sms import generate_otp, validate_and_format_phone, send_verification_token, check_verification_token
+from app.services.sms import validate_and_format_phone, send_verification_token, check_verification_token
 
 logger = logging.getLogger(__name__)
 
