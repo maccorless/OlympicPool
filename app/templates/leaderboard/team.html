@@ -53,60 +53,101 @@
     {% else %}
     <!-- Picks Table -->
     <div class="bg-white shadow rounded-lg overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥇</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥈</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥉</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for pick in picks %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <img src="https://flagcdn.com/w40/{{ pick.iso_code|lower }}.png"
-                                 alt="{{ pick.name }}"
-                                 class="w-8 h-5 mr-3 object-cover">
-                            <div>
-                                <div class="text-sm font-medium text-gray-900">{{ pick.name }}</div>
-                                <div class="text-xs text-gray-500">{{ pick.code }}</div>
+        <!-- Desktop View -->
+        <div class="hidden sm:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Country</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥇</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥈</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">🥉</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Points</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for pick in picks %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <img src="https://flagcdn.com/w40/{{ pick.iso_code|lower }}.png"
+                                     alt="{{ pick.name }}"
+                                     class="w-8 h-5 mr-3 object-cover">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ pick.name }}</div>
+                                    <div class="text-xs text-gray-500">{{ pick.code }}</div>
+                                </div>
                             </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-semibold text-blue-600">{{ pick.cost }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="text-sm font-semibold text-yellow-600">{{ pick.gold }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="text-sm font-semibold text-gray-400">{{ pick.silver }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <div class="text-sm font-semibold text-orange-600">{{ pick.bronze }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-bold text-purple-600">{{ pick.points }}</div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="bg-gray-50">
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">{{ total_cost }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-yellow-600">{{ total_gold }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-400">{{ total_silver }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-orange-600">{{ total_bronze }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{{ total_points }}</td>
-                </tr>
-            </tfoot>
-        </table>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-semibold text-blue-600">{{ pick.cost }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-yellow-600">{{ pick.gold }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-gray-400">{{ pick.silver }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-orange-600">{{ pick.bronze }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-purple-600">{{ pick.points }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-gray-50">
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">TOTAL</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">{{ total_cost }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-yellow-600">{{ total_gold }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-400">{{ total_silver }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-orange-600">{{ total_bronze }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">{{ total_points }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Mobile View -->
+        <div class="sm:hidden divide-y divide-gray-200">
+            {% for pick in picks %}
+            <div class="p-3">
+                <!-- Country and Flag -->
+                <div class="flex items-center mb-2">
+                    <img src="https://flagcdn.com/w40/{{ pick.iso_code|lower }}.png"
+                         alt="{{ pick.name }}"
+                         class="w-8 h-5 mr-3 object-cover">
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">{{ pick.name }}</div>
+                        <div class="text-xs text-gray-500">{{ pick.code }}</div>
+                    </div>
+                    <div class="text-sm font-bold text-purple-600">{{ pick.points }} pts</div>
+                </div>
+                <!-- Medal Counts -->
+                <div class="flex items-center gap-4 text-xs pl-11">
+                    <span class="font-semibold text-yellow-600">🥇 {{ pick.gold }}</span>
+                    <span class="font-semibold text-gray-400">🥈 {{ pick.silver }}</span>
+                    <span class="font-semibold text-orange-600">🥉 {{ pick.bronze }}</span>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Mobile Totals -->
+            <div class="p-3 bg-gray-50 font-bold">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-gray-900">TOTAL</span>
+                    <span class="text-sm text-purple-600">{{ total_points }} pts</span>
+                </div>
+                <div class="flex items-center gap-4 text-xs">
+                    <span class="text-yellow-600">🥇 {{ total_gold }}</span>
+                    <span class="text-gray-400">🥈 {{ total_silver }}</span>
+                    <span class="text-orange-600">🥉 {{ total_bronze }}</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="mt-4 text-center text-gray-600 text-sm">

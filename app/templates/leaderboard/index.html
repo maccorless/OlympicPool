@@ -40,7 +40,12 @@
 <div class="max-w-7xl mx-auto px-2 sm:px-4">
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Leaderboard</h1>
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-2xl sm:text-4xl font-bold text-gray-900">Leaderboard</h1>
+            <a href="/medals" class="text-sm sm:text-base bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-gray-700 font-medium">
+                Medal Table →
+            </a>
+        </div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm sm:text-base text-gray-600">
                 XXV Winter Olympic Games Medal Pool
@@ -55,6 +60,35 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Mobile Sorting Controls -->
+    {% if contest_state in ['locked', 'complete'] %}
+    <div class="sm:hidden mb-4 bg-white shadow rounded-lg p-3">
+        <label class="block text-xs text-gray-600 mb-2">Sort by:</label>
+        <div class="grid grid-cols-3 gap-2">
+            <a href="?sort=points&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'points' %}bg-purple-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                Points {% if sort_by == 'points' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=gold&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'gold' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥇 Gold {% if sort_by == 'gold' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=silver&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'silver' %}bg-gray-400 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥈 Silver {% if sort_by == 'silver' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=bronze&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'bronze' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥉 Bronze {% if sort_by == 'bronze' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=team_name&order=asc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'team_name' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                Team {% if sort_by == 'team_name' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+        </div>
+    </div>
+    {% endif %}
 
     {% if teams|length == 0 %}
     <!-- Empty State -->

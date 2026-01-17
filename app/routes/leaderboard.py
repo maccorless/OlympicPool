@@ -218,3 +218,68 @@ def register_routes(app):
                              total_points=total_points,
                              budget=contest['budget'],
                              contest_state=contest['state'])
+
+    @app.route('/medals')
+    def medal_table():
+        """Medal table showing all countries with their medals and efficiency."""
+        db = get_db()
+
+        # Get contest state
+        contest = db.execute('SELECT state FROM contest WHERE id = 1').fetchone()
+
+        # Only show medal table in locked or complete states (has medal data)
+        if contest['state'] not in ['locked', 'complete']:
+            abort(404)
+
+        # Get sort parameters (default: points DESC)
+        sort_by = request.args.get('sort', 'points')
+        sort_order = request.args.get('order', 'desc')
+
+        # Validate sort parameters
+        valid_sorts = ['points', 'gold', 'silver', 'bronze', 'efficiency', 'country']
+        if sort_by not in valid_sorts:
+            sort_by = 'points'
+        if sort_order not in ('asc', 'desc'):
+            sort_order = 'desc'
+
+        # Build ORDER BY clause
+        if sort_by == 'efficiency':
+            # Sort by points/cost ratio
+            order_clause = f'efficiency {sort_order.upper()}, m.points DESC'
+        elif sort_by == 'country':
+            order_clause = f'c.name {sort_order.upper()}'
+        else:
+            # Sort by medal counts
+            order_clause = f'm.{sort_by} {sort_order.upper()}, c.name ASC'
+
+        # Get all countries with medal data and efficiency
+        countries = db.execute(f'''
+            SELECT
+                c.code,
+                c.iso_code,
+                c.name,
+                c.cost,
+                COALESCE(m.gold, 0) as gold,
+                COALESCE(m.silver, 0) as silver,
+                COALESCE(m.bronze, 0) as bronze,
+                COALESCE(m.points, 0) as points,
+                CASE
+                    WHEN c.cost > 0 THEN ROUND(CAST(COALESCE(m.points, 0) AS FLOAT) / c.cost, 2)
+                    ELSE 0
+                END as efficiency
+            FROM countries c
+            LEFT JOIN medals m ON c.code = m.country_code
+            WHERE c.is_active = 1
+            ORDER BY {order_clause}
+        ''').fetchall()
+
+        # Get last updated timestamp
+        last_update = db.execute('''
+            SELECT MAX(updated_at) as last_updated FROM medals
+        ''').fetchone()
+
+        return render_template('leaderboard/medals.html',
+                             countries=countries,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             last_updated=last_update['last_updated'] if last_update else None)

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Medal Table - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <!-- Header -->
+    <div class="mb-4 sm:mb-6">
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-2xl sm:text-4xl font-bold text-gray-900">Medal Table</h1>
+            <a href="/leaderboard" class="text-sm sm:text-base bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-gray-700 font-medium">
+                ← Leaderboard
+            </a>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm sm:text-base text-gray-600">
+                Official Milano Cortina 2026 Medal Standings
+            </p>
+            {% if last_updated %}
+            <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-0">
+                Last updated: <span class="font-medium">{{ last_updated }}</span>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Mobile Sorting Controls -->
+    <div class="sm:hidden mb-4 bg-white shadow rounded-lg p-3">
+        <label class="block text-xs text-gray-600 mb-2">Sort by:</label>
+        <div class="grid grid-cols-3 gap-2">
+            <a href="?sort=points&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'points' %}bg-purple-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                Points {% if sort_by == 'points' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=gold&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'gold' %}bg-yellow-500 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥇 Gold {% if sort_by == 'gold' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=silver&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'silver' %}bg-gray-400 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥈 Silver {% if sort_by == 'silver' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=bronze&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'bronze' %}bg-orange-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                🥉 Bronze {% if sort_by == 'bronze' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=efficiency&order=desc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'efficiency' %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                Efficiency {% if sort_by == 'efficiency' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+            <a href="?sort=country&order=asc"
+               class="px-3 py-2 text-xs font-medium rounded text-center {% if sort_by == 'country' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                Country {% if sort_by == 'country' %}{{ '↑' if sort_order == 'asc' else '↓' }}{% endif %}
+            </a>
+        </div>
+    </div>
+
+    <!-- Medal Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <!-- Desktop View -->
+        <div class="hidden sm:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=country&order={{ 'asc' if sort_by == 'country' and sort_order == 'desc' else 'desc' }}'">
+                            Country
+                            {% if sort_by == 'country' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cost
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=gold&order={{ 'asc' if sort_by == 'gold' and sort_order == 'desc' else 'desc' }}'">
+                            🥇
+                            {% if sort_by == 'gold' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=silver&order={{ 'asc' if sort_by == 'silver' and sort_order == 'desc' else 'desc' }}'">
+                            🥈
+                            {% if sort_by == 'silver' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=bronze&order={{ 'asc' if sort_by == 'bronze' and sort_order == 'desc' else 'desc' }}'">
+                            🥉
+                            {% if sort_by == 'bronze' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=points&order={{ 'asc' if sort_by == 'points' and sort_order == 'desc' else 'desc' }}'">
+                            Points
+                            {% if sort_by == 'points' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                            onclick="window.location.href='?sort=efficiency&order={{ 'asc' if sort_by == 'efficiency' and sort_order == 'desc' else 'desc' }}'">
+                            Pts/Cost
+                            {% if sort_by == 'efficiency' %}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {% endif %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for country in countries %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                                     alt="{{ country.name }}"
+                                     class="w-8 h-5 mr-3 object-cover border border-gray-200 rounded-sm">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                                    <div class="text-xs text-gray-500">{{ country.code }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm text-gray-600">${{ country.cost }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-yellow-600">{{ country.gold }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-gray-400">{{ country.silver }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-orange-600">{{ country.bronze }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm font-bold text-purple-600">{{ country.points }}</div>
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-center">
+                            <div class="text-sm font-bold text-green-600">{{ country.efficiency }}</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile View -->
+        <div class="sm:hidden divide-y divide-gray-200">
+            {% for country in countries %}
+            <div class="p-3">
+                <!-- Country and Flag -->
+                <div class="flex items-center mb-2">
+                    <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                         alt="{{ country.name }}"
+                         class="w-8 h-5 mr-3 object-cover border border-gray-200 rounded-sm">
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                        <div class="text-xs text-gray-500">{{ country.code }} • Cost: ${{ country.cost }}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-bold text-purple-600">{{ country.points }} pts</div>
+                        <div class="text-xs font-semibold text-green-600">{{ country.efficiency }} eff</div>
+                    </div>
+                </div>
+                <!-- Medal Counts -->
+                <div class="flex items-center gap-4 text-xs pl-11">
+                    <span class="font-semibold text-yellow-600">🥇 {{ country.gold }}</span>
+                    <span class="font-semibold text-gray-400">🥈 {{ country.silver }}</span>
+                    <span class="font-semibold text-orange-600">🥉 {{ country.bronze }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Footer Info -->
+    <div class="mt-4 sm:mt-6 text-center text-gray-600 text-xs sm:text-sm">
+        <p>Efficiency = Points per Dollar Cost (higher is better value)</p>
+        <p class="mt-1">Scoring: Gold = 3 points, Silver = 2 points, Bronze = 1 point</p>
+        <p class="mt-1 text-gray-500">Tap column headers to sort (desktop) | Use sort buttons above (mobile)</p>
+    </div>
+</div>
+{% endblock %}
