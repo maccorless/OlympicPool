@@ -1,14 +1,14 @@
 """
-Authentication routes: register, login, magic link verification, logout.
-Email sending logic is inline (no service layer).
+Authentication routes: register, login, OTP verification, logout.
+SMS OTP sending logic uses Twilio.
 """
-import secrets
 import hashlib
 import sqlite3
 import logging
 from datetime import datetime, timedelta, timezone
 from flask import render_template, request, redirect, url_for, flash, session, current_app
 from app.db import get_db
+from app.services.sms import generate_otp, validate_and_format_phone, send_otp_sms
 
 logger = logging.getLogger(__name__)
 
@@ -30,183 +30,211 @@ def register_routes(app):
 
     @app.route('/register', methods=['GET', 'POST'])
     def register():
-        """Registration form and handler."""
+        """
+        Registration form and handler.
+        User enters: name, email, phone, team_name
+        → Create account → Set session → Immediately logged in (no OTP)
+        """
         if request.method == 'POST':
-            email = request.form.get('email', '').strip()
             name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone_input = request.form.get('phone', '').strip()
             team_name = request.form.get('team_name', '').strip()
 
             # Basic validation
-            if not email or not name or not team_name:
+            if not all([name, email, phone_input, team_name]):
                 flash('All fields are required.', 'error')
                 return render_template('auth/register.html',
-                                     email=email, name=name, team_name=team_name)
+                                     name=name, email=email, phone=phone_input, team_name=team_name)
 
             # Email format validation
             if not is_valid_email(email):
                 flash('Invalid email address.', 'error')
                 return render_template('auth/register.html',
-                                     email=email, name=name, team_name=team_name)
+                                     name=name, email=email, phone=phone_input, team_name=team_name)
+
+            # Phone number validation and formatting
+            valid, phone_number, error = validate_and_format_phone(phone_input)
+            if not valid:
+                flash(f'Invalid phone number: {error}', 'error')
+                return render_template('auth/register.html',
+                                     name=name, email=email, phone=phone_input, team_name=team_name)
 
             db = get_db()
 
-            # Check if user exists
-            existing = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
-
-            if not existing:
-                # Create new user + token atomically (transaction)
-                magic_link_result = None
-                try:
-                    db.execute('BEGIN')
-                    db.execute(
-                        'INSERT INTO users (email, name, team_name) VALUES (?, ?, ?)',
-                        [email, name, team_name]
-                    )
-                    # Create token within same transaction
-                    user_id = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()['id']
-                    success, result = create_magic_link_token(db, user_id)
-                    if not success:
-                        db.rollback()
-                        # Generic error to avoid account enumeration
-                        flash("Unable to complete registration. Please try again later.", 'error')
-                        logger.warning(f"Token creation failed during registration: {result}")
-                        return render_template('auth/register.html',
-                                             email=email, name=name, team_name=team_name)
-                    magic_link_result = result
-                    db.commit()
-                    # In NO_EMAIL_MODE, result contains the magic link
-                    if magic_link_result and magic_link_result.startswith('http'):
-                        return render_template('auth/check_email.html', magic_link=magic_link_result, email=email)
-                except sqlite3.IntegrityError:
-                    # Race condition: another request created this user
-                    db.rollback()
-                    logger.warning(f"Race condition on user creation for {email}")
-                    # User exists now, send magic link
-                    user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
-                    if user:
-                        success, result = create_magic_link_token(db, user['id'])
-                        if success:
-                            db.commit()
-                            if result and result.startswith('http'):
-                                return render_template('auth/check_email.html', magic_link=result, email=email)
-                        else:
-                            flash("Unable to send login link. Please try again.", 'error')
-                            return render_template('auth/register.html',
-                                                 email=email, name=name, team_name=team_name)
-                except sqlite3.Error as e:
-                    db.rollback()
-                    logger.error(f"Database error during registration for {email}: {e}")
-                    flash("Registration failed. Please try again.", 'error')
-                    return render_template('auth/register.html',
-                                         email=email, name=name, team_name=team_name)
-            else:
-                # Existing user - just create token
-                success, result = create_magic_link_token(db, existing['id'])
-                if not success:
-                    flash(result, 'error')
-                    return render_template('auth/register.html',
-                                         email=email, name=name, team_name=team_name)
+            # Create user
+            try:
+                db.execute('''
+                    INSERT INTO users (email, phone_number, name, team_name)
+                    VALUES (?, ?, ?, ?)
+                ''', [email, phone_number, name, team_name])
                 db.commit()
-                # In NO_EMAIL_MODE, result contains the magic link
-                if result and result.startswith('http'):
-                    return render_template('auth/check_email.html', magic_link=result, email=email)
 
-            return redirect(url_for('check_email'))
+                # Get user ID
+                user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
+
+                # Log user in immediately (no OTP required for registration)
+                session.permanent = True
+                session['user_id'] = user['id']
+
+                flash('Registration successful! Welcome to the pool.', 'success')
+                return redirect(url_for('index'))
+
+            except sqlite3.IntegrityError:
+                flash('Email or phone number already registered.', 'error')
+                return render_template('auth/register.html',
+                                     name=name, email=email, phone=phone_input, team_name=team_name)
+            except sqlite3.Error as e:
+                logger.error(f"Database error during registration: {e}")
+                flash('Registration failed. Please try again.', 'error')
+                return render_template('auth/register.html',
+                                     name=name, email=email, phone=phone_input, team_name=team_name)
 
         return render_template('auth/register.html')
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
-        """Login form and handler (request magic link)."""
+        """
+        Login form and handler.
+        User enters: email OR phone
+        → Check if session exists (same device) → if yes, redirect
+        → If no session (new device), send OTP → redirect to /login/verify
+        """
         if request.method == 'POST':
-            email = request.form.get('email', '').strip()
+            identifier = request.form.get('identifier', '').strip()
+            force_otp = request.form.get('force_otp') == '1'  # Dev/testing checkbox
 
-            if not email:
-                flash('Email is required.', 'error')
-                return render_template('auth/login.html', email=email)
+            if not identifier:
+                flash('Email or phone number is required.', 'error')
+                return render_template('auth/login.html', identifier=identifier)
 
-            # Email format validation
-            if not is_valid_email(email):
-                flash('Invalid email address.', 'error')
-                return render_template('auth/login.html', email=email)
+            # Try to parse as phone number first
+            valid_phone, phone_number, _ = validate_and_format_phone(identifier)
 
             db = get_db()
 
-            # Check if user exists
-            user = db.execute('SELECT id FROM users WHERE email = ?', [email]).fetchone()
+            # Look up user by phone or email
+            if valid_phone:
+                user = db.execute('SELECT * FROM users WHERE phone_number = ?', [phone_number]).fetchone()
+            else:
+                # Try by email
+                if not is_valid_email(identifier):
+                    flash('Invalid email or phone number format.', 'error')
+                    return render_template('auth/login.html', identifier=identifier)
+                user = db.execute('SELECT * FROM users WHERE email = ?', [identifier]).fetchone()
 
             if not user:
-                # In dev mode, show helpful message. In production, don't reveal account existence.
-                if current_app.config.get('NO_EMAIL_MODE'):
-                    flash('No account found with that email. Please register first.', 'error')
-                    return render_template('auth/login.html', email=email)
-                else:
-                    flash('If an account exists with that email, we\'ve sent you a login link.', 'info')
-                    return redirect(url_for('check_email'))
+                flash('No account found. Please register first.', 'error')
+                return render_template('auth/login.html', identifier=identifier)
 
-            # Create magic link token
-            success, result = create_magic_link_token(db, user['id'])
+            # Check if user already has valid session (same device)
+            # Skip session check if force_otp is enabled (dev/testing)
+            if not force_otp and session.get('user_id') == user['id']:
+                # Already logged in, just redirect
+                flash('Already logged in!', 'success')
+                return redirect(url_for('index'))
+
+            # New device login - send OTP
+            # Rate limiting: max 3 OTPs per user per hour
+            recent_otps = db.execute('''
+                SELECT COUNT(*) as count FROM otp_codes
+                WHERE user_id = ? AND created_at > datetime('now', 'utc', '-1 hour')
+            ''', [user['id']]).fetchone()
+
+            if recent_otps['count'] >= 3:
+                flash('Too many verification attempts. Please try again in an hour.', 'error')
+                return render_template('auth/login.html', identifier=identifier)
+
+            # Generate OTP
+            otp_code = generate_otp()
+            otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
+            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+
+            try:
+                db.execute('''
+                    INSERT INTO otp_codes (user_id, code_hash, expires_at)
+                    VALUES (?, ?, ?)
+                ''', [user['id'], otp_hash, expires_at])
+                db.commit()
+            except sqlite3.Error as e:
+                logger.error(f"Failed to create OTP for user {user['id']}: {e}")
+                flash('Failed to send verification code. Please try again.', 'error')
+                return render_template('auth/login.html', identifier=identifier)
+
+            # Send SMS
+            success, result = send_otp_sms(user['phone_number'], otp_code)
 
             if not success:
-                # Generic error to avoid enumeration
-                flash('Unable to send login link. Please try again.', 'error')
-                return render_template('auth/login.html', email=email)
+                flash(f'Failed to send verification code: {result}', 'error')
+                return render_template('auth/login.html', identifier=identifier)
 
-            db.commit()
+            # Store user_id and phone in session temporarily for OTP verification
+            session['otp_user_id'] = user['id']
+            session['otp_phone'] = user['phone_number']
 
-            # In NO_EMAIL_MODE, result contains the magic link - render directly
-            if result and result.startswith('http'):
-                return render_template('auth/check_email.html', magic_link=result, email=email)
+            # In NO_SMS_MODE, show OTP on page
+            if current_app.config.get('NO_SMS_MODE'):
+                return render_template('auth/login_verify.html',
+                                     phone=user['phone_number'],
+                                     otp_code=result)  # result contains code in dev mode
 
-            flash('Check your email for a login link.', 'info')
-            return redirect(url_for('check_email'))
+            flash('Verification code sent! Check your phone.', 'info')
+            return redirect(url_for('login_verify'))
 
         return render_template('auth/login.html')
 
-    @app.route('/check-email')
-    def check_email():
-        """Confirmation page after requesting magic link."""
-        return render_template('auth/check_email.html')
+    @app.route('/login/verify', methods=['GET', 'POST'])
+    def login_verify():
+        """OTP verification page (only for new device logins)."""
+        user_id = session.get('otp_user_id')
+        phone = session.get('otp_phone')
 
-    @app.route('/auth/<token>')
-    def verify_magic_link(token):
-        """Consume magic link token and log user in."""
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        db = get_db()
-
-        # Find valid token
-        # Use SQLite UTC datetime for consistent timestamp comparison
-        token_row = db.execute('''
-            SELECT * FROM tokens
-            WHERE token_hash = ?
-            AND used_at IS NULL AND expires_at > datetime('now', 'utc')
-        ''', [token_hash]).fetchone()
-
-        if not token_row:
-            logger.warning(f"Invalid magic link attempt: token_hash={token_hash[:8]}...")
-            flash('This link has expired or already been used.', 'error')
+        if not user_id:
+            flash('Session expired. Please log in again.', 'error')
             return redirect(url_for('login'))
 
-        # Mark token as used
-        db.execute('UPDATE tokens SET used_at = ? WHERE token_hash = ?',
-                   [datetime.now(timezone.utc).isoformat(), token_hash])
+        if request.method == 'POST':
+            entered_code = request.form.get('otp_code', '').strip()
 
-        # Get user
-        user = db.execute('SELECT * FROM users WHERE id = ?', [token_row['user_id']]).fetchone()
+            if not entered_code or len(entered_code) != 6:
+                flash('Please enter the 6-digit code.', 'error')
+                return render_template('auth/login_verify.html', phone=phone)
 
-        if not user:
-            flash('User not found.', 'error')
+            # Verify OTP
+            code_hash = hashlib.sha256(entered_code.encode()).hexdigest()
+            db = get_db()
+
+            otp_record = db.execute('''
+                SELECT * FROM otp_codes
+                WHERE user_id = ?
+                AND code_hash = ?
+                AND used_at IS NULL
+                AND expires_at > datetime('now', 'utc')
+                ORDER BY created_at DESC
+                LIMIT 1
+            ''', [user_id, code_hash]).fetchone()
+
+            if not otp_record:
+                flash('Invalid or expired code. Please try again.', 'error')
+                return render_template('auth/login_verify.html', phone=phone)
+
+            # Mark OTP as used
+            db.execute('UPDATE otp_codes SET used_at = ? WHERE id = ?',
+                      [datetime.now(timezone.utc).isoformat(), otp_record['id']])
             db.commit()
-            return redirect(url_for('login'))
 
-        # Set session
-        session.permanent = True
-        session['user_id'] = user['id']
+            # Clear temporary session data
+            session.pop('otp_user_id', None)
+            session.pop('otp_phone', None)
 
-        db.commit()
+            # Set permanent session (remember this device)
+            session.permanent = True
+            session['user_id'] = user_id
 
-        flash('Successfully logged in!', 'success')
-        return redirect(url_for('index'))
+            flash('Successfully logged in!', 'success')
+            return redirect(url_for('index'))
+
+        return render_template('auth/login_verify.html', phone=phone)
 
     @app.route('/logout')
     def logout():
@@ -214,100 +242,3 @@ def register_routes(app):
         session.clear()
         flash('You have been logged out.', 'info')
         return redirect(url_for('index'))
-
-
-def create_magic_link_token(db, user_id):
-    """
-    Create magic link token for user and handle email/display.
-    Does NOT commit - caller must commit.
-    Returns (success: bool, error_message: str or None)
-    """
-    # Get user info
-    user = db.execute('SELECT email, name FROM users WHERE id = ?', [user_id]).fetchone()
-    if not user:
-        return False, "User not found."
-
-    # Rate limiting: max 3 tokens per user per hour
-    # Use SQLite's UTC datetime function for consistent timestamp comparison
-    recent_tokens = db.execute('''
-        SELECT COUNT(*) as count FROM tokens
-        WHERE user_id = ? AND created_at > datetime('now', 'utc', '-1 hour')
-    ''', [user_id]).fetchone()
-
-    if recent_tokens['count'] >= 3:
-        return False, "Too many login attempts. Please try again in an hour."
-
-    # Generate token
-    token = secrets.token_urlsafe(32)
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
-    # Magic links valid until end of March 2026
-    expires_at = datetime(2026, 3, 31, 23, 59, 59, tzinfo=timezone.utc)
-
-    # Store token hash (without commit)
-    try:
-        db.execute('''
-            INSERT INTO tokens (token_hash, user_id, expires_at)
-            VALUES (?, ?, ?)
-        ''', [token_hash, user_id, expires_at.isoformat()])
-    except sqlite3.Error as e:
-        logger.error(f"Failed to create token for user {user_id}: {e}")
-        return False, "Failed to create login link. Please try again."
-
-    # Build magic link URL using url_for
-    magic_link = url_for('verify_magic_link', token=token, _external=True)
-
-    # NO_EMAIL_MODE: return link directly so caller can display it
-    if current_app.config.get('NO_EMAIL_MODE'):
-        logger.info(f"NO_EMAIL_MODE: Magic link for {user['email']}: {magic_link}")
-        return True, magic_link
-
-    # Production: send email via Resend
-    if current_app.config.get('RESEND_API_KEY'):
-        try:
-            import resend
-            resend.api_key = current_app.config['RESEND_API_KEY']
-
-            html = render_template('email/magic_link.html',
-                                   name=user['name'],
-                                   magic_link=magic_link)
-
-            # Plain text version (improves deliverability)
-            text = f"""
-Hi {user['name']},
-
-Click the link below to log in to your Olympic Medal Pool account:
-
-{magic_link}
-
-This link will expire in 1 hour.
-
-If you didn't request this, you can safely ignore this email.
-
----
-Olympic Medal Pool - XXV Winter Olympic Games
-            """.strip()
-
-            resend.Emails.send({
-                "from": current_app.config['FROM_EMAIL'],
-                "to": user['email'],
-                "subject": f"Your login link for {user['name']}'s team",
-                "html": html,
-                "text": text,
-                "reply_to": current_app.config['FROM_EMAIL']
-            })
-
-            logger.info(f"Magic link email sent to {user['email']}")
-            return True, None
-        except Exception as e:
-            logger.error(f"Failed to send email via Resend to {user['email']}: {e}")
-            # Fall through to console fallback
-
-    # Fallback: print to console (Resend failure) and return link
-    logger.warning(f"Email not sent (Resend unavailable). Magic link for {user['email']}: {magic_link}")
-    print(f"\n{'='*60}")
-    print(f"MAGIC LINK FOR: {user['email']}")
-    print(f"{'='*60}")
-    print(magic_link)
-    print(f"{'='*60}\n")
-
-    return True, magic_link

@@ -20,6 +20,15 @@
                 <input type="email" id="email" name="email" required
                        class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                        placeholder="you@example.com" value="{{ email or '' }}">
+                <p class="text-sm text-gray-500 mt-1">Used for login</p>
+            </div>
+
+            <div class="mb-4">
+                <label for="phone" class="block text-gray-700 font-semibold mb-2">Phone Number</label>
+                <input type="tel" id="phone" name="phone" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="+1 206-555-1234" value="{{ phone or '' }}">
+                <p class="text-sm text-gray-500 mt-1">Used for verification when logging in from new devices</p>
             </div>
 
             <div class="mb-6">
