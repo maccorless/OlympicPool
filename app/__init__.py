@@ -70,24 +70,40 @@ def create_app(test_config=None):
         return render_template('index.html', contest_state=contest['state'])
 
     # One-time database setup endpoint (remove after first use)
-    @app.route('/setup-database-now')
-    def setup_database():
-        """Initialize database with new schema. Visit this URL once after deployment."""
+    @app.route('/reset-database-now')
+    def reset_database():
+        """DANGER: Delete old database and initialize with new schema. Visit this URL once after deployment."""
         from flask import jsonify
-        from app.db import init_db, load_countries
+        from app.db import get_db, init_db, load_countries
+        import os
 
         try:
+            # Close any existing connections
+            from flask import g
+            db = g.pop('db', None)
+            if db is not None:
+                db.close()
+
+            # Delete the old database file
+            db_path = app.config['DATABASE']
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+            # Create new database with new schema
             init_db()
             load_countries()
+
             return jsonify({
                 'status': 'success',
-                'message': 'Database initialized successfully! You can now use the app.',
-                'next_step': 'Visit / to register'
+                'message': 'Database reset successfully! All old data deleted. New schema created.',
+                'next_step': 'Visit / to register with your phone number'
             })
         except Exception as e:
+            import traceback
             return jsonify({
                 'status': 'error',
-                'message': str(e)
+                'message': str(e),
+                'traceback': traceback.format_exc()
             }), 500
 
     return app
