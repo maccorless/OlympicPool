@@ -15,8 +15,11 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm sm:text-base text-gray-600">
                 Official Milano Cortina 2026 Medal Standings
+                {% if contest_state == 'open' %}
+                <span class="text-blue-600 font-semibold">(Games not started)</span>
+                {% endif %}
             </p>
-            {% if last_updated %}
+            {% if last_updated and contest_state in ['locked', 'complete'] %}
             <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-0">
                 Last updated: <span class="font-medium">{{ last_updated }}</span>
             </p>
@@ -178,8 +181,13 @@
 
     <!-- Footer Info -->
     <div class="mt-4 sm:mt-6 text-center text-gray-600 text-xs sm:text-sm">
+        {% if contest_state == 'open' %}
+        <p>Medal counts and efficiency will appear once the Games begin</p>
+        <p class="mt-1">Efficiency = Points per Dollar Cost (helps identify best value picks)</p>
+        {% else %}
         <p>Efficiency = Points per Dollar Cost (higher is better value)</p>
         <p class="mt-1">Scoring: Gold = 3 points, Silver = 2 points, Bronze = 1 point</p>
+        {% endif %}
         <p class="mt-1 text-gray-500">Tap column headers to sort (desktop) | Use sort buttons above (mobile)</p>
     </div>
 </div>

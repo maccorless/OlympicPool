@@ -237,8 +237,8 @@ def register_routes(app):
         # Get contest state
         contest = db.execute('SELECT state FROM contest WHERE id = 1').fetchone()
 
-        # Only show medal table in locked or complete states (has medal data)
-        if contest['state'] not in ['locked', 'complete']:
+        # Medal table visible in all states (setup shows 404, open/locked/complete show table)
+        if contest['state'] == 'setup':
             abort(404)
 
         # Get sort parameters (default: points DESC)
@@ -292,4 +292,5 @@ def register_routes(app):
                              countries=countries,
                              sort_by=sort_by,
                              sort_order=sort_order,
+                             contest_state=contest['state'],
                              last_updated=last_update['last_updated'] if last_update else None)
