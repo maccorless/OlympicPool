@@ -152,8 +152,9 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for team in teams %}
-                    <tr class="{% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} hover:bg-gray-50 cursor-pointer"
-                        onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'">
+                    {% set can_view = contest_state in ['locked', 'complete'] or (current_user_id and team.id == current_user_id) or (user and user.email in config.ADMIN_EMAILS) %}
+                    <tr class="{% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} {% if can_view %}hover:bg-gray-50 cursor-pointer{% endif %}"
+                        {% if can_view %}onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'"{% endif %}>
                         <td class="px-3 py-2 whitespace-nowrap">
                             <div class="text-base font-bold text-gray-900">{{ team.rank }}</div>
                         </td>
@@ -216,8 +217,9 @@
         <!-- Mobile View -->
         <div class="sm:hidden divide-y divide-gray-200">
             {% for team in teams %}
-            <div class="p-3 {% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} hover:bg-gray-50 active:bg-gray-100"
-                onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'">
+            {% set can_view = contest_state in ['locked', 'complete'] or (current_user_id and team.id == current_user_id) or (user and user.email in config.ADMIN_EMAILS) %}
+            <div class="p-3 {% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} {% if can_view %}hover:bg-gray-50 active:bg-gray-100{% endif %}"
+                {% if can_view %}onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'"{% endif %}>
                 <!-- Rank and Points -->
                 <div class="flex items-center justify-between mb-2">
                     <div class="text-base font-bold text-gray-900">{{ team.rank }}</div>
@@ -282,11 +284,12 @@
         {% if contest_state == 'open' %}
         <p>All teams tied at #1 until the Games begin</p>
         <p class="mt-1">Medal counts and points will appear once competition starts</p>
+        <p class="mt-1 text-gray-500">Tap your team to view your picks | Other teams' picks hidden until Games start</p>
         {% else %}
         <p>Scoring: Gold = 3 points, Silver = 2 points, Bronze = 1 point</p>
         <p class="mt-1">Tiebreaker: Most golds, then silvers, then bronzes</p>
-        {% endif %}
         <p class="mt-1 text-gray-500">Tap column headers to sort (desktop) | Tap team to view details</p>
+        {% endif %}
     </div>
     {% endif %}
 </div>

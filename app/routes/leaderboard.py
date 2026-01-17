@@ -173,6 +173,7 @@ def register_routes(app):
     def team_detail(user_id):
         """View a specific team's picks and points breakdown."""
         db = get_db()
+        current_user = get_current_user()
 
         # Get contest state
         contest = db.execute('SELECT state, budget FROM contest WHERE id = 1').fetchone()
@@ -180,6 +181,15 @@ def register_routes(app):
         # Only show team details in open, locked, or complete states (not setup)
         if contest['state'] == 'setup':
             abort(404)
+
+        # Authorization check for 'open' state
+        if contest['state'] == 'open':
+            # In open mode, only allow viewing own picks or if admin
+            is_own_picks = current_user and current_user['id'] == user_id
+            is_admin = current_user and current_user['email'] in app.config['ADMIN_EMAILS']
+
+            if not (is_own_picks or is_admin):
+                abort(403)  # Forbidden: can't view other users' picks during open mode
 
         # Get user info
         user = db.execute('SELECT id, name, team_name FROM users WHERE id = ?', [user_id]).fetchone()
