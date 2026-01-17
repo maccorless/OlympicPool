@@ -88,11 +88,16 @@ def register_routes(app):
             reverse=True
         )
 
-        # Assign ranks
+        # Assign ranks with tie handling
         rank_map = {}
         current_rank = 1
         prev_scores = None
-
+        
+        # Pre-calculate counts for each rank to detect ties
+        rank_counts = {}
+        temp_ranks = []
+        
+        # First pass: determine raw ranks
         for i, team in enumerate(teams_for_ranking):
             current_scores = (
                 team['total_points'],
@@ -103,9 +108,19 @@ def register_routes(app):
 
             if prev_scores is not None and current_scores != prev_scores:
                 current_rank = i + 1
-
-            rank_map[team['id']] = current_rank
+            
+            # Store just the rank number for now
+            temp_ranks.append((team['id'], current_rank))
+            rank_counts[current_rank] = rank_counts.get(current_rank, 0) + 1
             prev_scores = current_scores
+
+        # Second pass: format rank strings
+        for team_id, rank_num in temp_ranks:
+            # If more than one team has this rank, append '='
+            if rank_counts[rank_num] > 1:
+                rank_map[team_id] = f"{rank_num}="
+            else:
+                rank_map[team_id] = str(rank_num)
 
         # Fetch all countries for all teams in a single query (avoid N+1)
         user_ids = [team['id'] for team in teams]

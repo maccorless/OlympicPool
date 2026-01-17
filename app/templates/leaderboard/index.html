@@ -24,7 +24,7 @@
 {% if contest_state in ['locked', 'complete'] %}
 <script>
     // Preload flag images immediately on page load for instant display
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const flagImages = document.querySelectorAll('.flag-container img');
         flagImages.forEach(img => {
             // Force browser to cache by creating invisible preload
@@ -45,7 +45,7 @@
             <p class="text-sm sm:text-base text-gray-600">
                 XXV Winter Olympic Games Medal Pool
                 {% if contest_state == 'open' %}
-                    <span class="text-blue-600 font-semibold">(Competition not started)</span>
+                <span class="text-blue-600 font-semibold">(Competition not started)</span>
                 {% endif %}
             </p>
             {% if last_updated and contest_state in ['locked', 'complete'] %}
@@ -78,7 +78,7 @@
                             onclick="window.location.href='?sort=team_name&order={{ 'asc' if sort_by == 'team_name' and sort_order == 'desc' else 'desc' }}'">
                             Team
                             {% if sort_by == 'team_name' %}
-                                {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
                             {% endif %}
                         </th>
                         {% if contest_state in ['locked', 'complete'] %}
@@ -89,28 +89,28 @@
                             onclick="window.location.href='?sort=gold&order={{ 'asc' if sort_by == 'gold' and sort_order == 'desc' else 'desc' }}'">
                             🥇
                             {% if sort_by == 'gold' %}
-                                {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
                             {% endif %}
                         </th>
                         <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             onclick="window.location.href='?sort=silver&order={{ 'asc' if sort_by == 'silver' and sort_order == 'desc' else 'desc' }}'">
                             🥈
                             {% if sort_by == 'silver' %}
-                                {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
                             {% endif %}
                         </th>
                         <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             onclick="window.location.href='?sort=bronze&order={{ 'asc' if sort_by == 'bronze' and sort_order == 'desc' else 'desc' }}'">
                             🥉
                             {% if sort_by == 'bronze' %}
-                                {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
                             {% endif %}
                         </th>
                         <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                             onclick="window.location.href='?sort=points&order={{ 'asc' if sort_by == 'points' and sort_order == 'desc' else 'desc' }}'">
                             Points
                             {% if sort_by == 'points' %}
-                                {{ '↑' if sort_order == 'asc' else '↓' }}
+                            {{ '↑' if sort_order == 'asc' else '↓' }}
                             {% endif %}
                         </th>
                         {% endif %}
@@ -121,7 +121,7 @@
                     <tr class="{% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} hover:bg-gray-50 cursor-pointer"
                         onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'">
                         <td class="px-3 py-2 whitespace-nowrap">
-                            <div class="text-base font-bold text-gray-900">#{{ team.rank }}</div>
+                            <div class="text-base font-bold text-gray-900">{{ team.rank }}</div>
                         </td>
                         <td class="px-3 py-2">
                             <div class="text-sm font-medium text-gray-900">{{ team.team_name }}</div>
@@ -136,19 +136,15 @@
                                     <div class="flex gap-1">
                                         {% for country in team.countries[:5] %}
                                         <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                                             alt="{{ country.name }}"
-                                             title="{{ country.name }}"
-                                             loading="eager"
-                                             class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                                            alt="{{ country.name }}" title="{{ country.name }}" loading="eager"
+                                            class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                                         {% endfor %}
                                     </div>
                                     <div class="flex gap-1">
                                         {% for country in team.countries[5:10] %}
                                         <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                                             alt="{{ country.name }}"
-                                             title="{{ country.name }}"
-                                             loading="eager"
-                                             class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                                            alt="{{ country.name }}" title="{{ country.name }}" loading="eager"
+                                            class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -157,10 +153,8 @@
                                 <div class="flex gap-1">
                                     {% for country in team.countries %}
                                     <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                                         alt="{{ country.name }}"
-                                         title="{{ country.name }}"
-                                         loading="eager"
-                                         class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                                        alt="{{ country.name }}" title="{{ country.name }}" loading="eager"
+                                        class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                                     {% endfor %}
                                 </div>
                                 {% endif %}
@@ -189,10 +183,10 @@
         <div class="sm:hidden divide-y divide-gray-200">
             {% for team in teams %}
             <div class="p-3 {% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} hover:bg-gray-50 active:bg-gray-100"
-                 onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'">
+                onclick="window.location.href='{{ url_for('team_detail', user_id=team.id) }}'">
                 <!-- Rank and Points -->
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-base font-bold text-gray-900">#{{ team.rank }}</div>
+                    <div class="text-base font-bold text-gray-900">{{ team.rank }}</div>
                     {% if contest_state in ['locked', 'complete'] %}
                     <div class="text-lg font-bold text-purple-600">{{ team.total_points }} pts</div>
                     {% endif %}
@@ -212,20 +206,16 @@
                     <div class="flex flex-col gap-1">
                         <div class="flex gap-1 flex-wrap">
                             {% for country in team.countries[:5] %}
-                            <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                                 alt="{{ country.name }}"
-                                 title="{{ country.name }}"
-                                 loading="eager"
-                                 class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                            <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png" alt="{{ country.name }}"
+                                title="{{ country.name }}" loading="eager"
+                                class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                             {% endfor %}
                         </div>
                         <div class="flex gap-1 flex-wrap">
                             {% for country in team.countries[5:10] %}
-                            <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                                 alt="{{ country.name }}"
-                                 title="{{ country.name }}"
-                                 loading="eager"
-                                 class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                            <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png" alt="{{ country.name }}"
+                                title="{{ country.name }}" loading="eager"
+                                class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                             {% endfor %}
                         </div>
                     </div>
@@ -233,11 +223,9 @@
                     <!-- Single row of flags -->
                     <div class="flex gap-1 flex-wrap">
                         {% for country in team.countries %}
-                        <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
-                             alt="{{ country.name }}"
-                             title="{{ country.name }}"
-                             loading="eager"
-                             class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
+                        <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png" alt="{{ country.name }}"
+                            title="{{ country.name }}" loading="eager"
+                            class="w-6 h-4 object-cover border border-gray-200 rounded-sm">
                         {% endfor %}
                     </div>
                     {% endif %}

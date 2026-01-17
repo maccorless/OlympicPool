@@ -474,7 +474,7 @@ def register_routes(app):
 
         # Get all users with pick counts
         users = db.execute('''
-            SELECT u.id, u.email, u.name, u.team_name, u.created_at,
+            SELECT u.id, u.email, u.phone_number, u.name, u.team_name, u.created_at,
                    COUNT(p.id) as pick_count
             FROM users u
             LEFT JOIN picks p ON u.id = p.user_id

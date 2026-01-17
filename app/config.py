@@ -19,7 +19,7 @@ ADMIN_EMAILS = [email.strip() for email in os.getenv('ADMIN_EMAILS', '').split('
 # Twilio configuration for SMS OTP
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
 TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')  # E.164 format: +12065551234
+TWILIO_VERIFY_SERVICE_SID = os.getenv('TWILIO_VERIFY_SERVICE_SID')
 
 # Dev mode: show OTP on page instead of sending SMS
 NO_SMS_MODE = os.getenv('NO_SMS_MODE', 'True').lower() == 'true'

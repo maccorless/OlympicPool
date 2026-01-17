@@ -36,13 +36,22 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Picks</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team
+                            Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Picks</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Registered</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -57,14 +66,19 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-600">{{ u.email }}</div>
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-600">{{ u.phone_number }}</div>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             <div class="text-sm font-semibold text-blue-600">{{ u.pick_count }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             {% if u.email in admin_emails %}
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
+                            <span
+                                class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
                             {% else %}
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">User</span>
+                            <span
+                                class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">User</span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -72,12 +86,13 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
-                                <a href="{{ url_for('team_detail', user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                                <a href="{{ url_for('team_detail', user_id=u.id) }}"
+                                    class="text-blue-600 hover:text-blue-800 text-sm">
                                     View Team
                                 </a>
                                 {% if u.id != user.id %}
                                 <form method="POST" action="{{ url_for('admin_user_delete', user_id=u.id) }}"
-                                      onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');">
+                                    onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');">
                                     <button type="submit" class="text-red-600 hover:text-red-800 text-sm">
                                         Delete
                                     </button>
@@ -101,9 +116,10 @@
                         <div class="text-xs text-gray-500">{{ u.email }}</div>
                     </div>
                     {% if u.email in admin_emails %}
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
+                    <span
+                        class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Admin</span>
                     {% else %}
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">User</span>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">User</span>
                     {% endif %}
                 </div>
                 <div class="text-sm text-gray-900 mb-1">Team: {{ u.team_name }}</div>
@@ -111,13 +127,14 @@
                     <span>{{ u.pick_count }} picks • {{ u.created_at }}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <a href="{{ url_for('team_detail', user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                    <a href="{{ url_for('team_detail', user_id=u.id) }}"
+                        class="text-blue-600 hover:text-blue-800 text-sm">
                         View Team →
                     </a>
                     {% if u.id != user.id %}
                     <form method="POST" action="{{ url_for('admin_user_delete', user_id=u.id) }}"
-                          onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');"
-                          class="inline">
+                        onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');"
+                        class="inline">
                         <button type="submit" class="text-red-600 hover:text-red-800 text-sm">
                             Delete
                         </button>

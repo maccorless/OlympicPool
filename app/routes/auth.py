@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from flask import render_template, request, redirect, url_for, flash, session, current_app
 from app.db import get_db
-from app.services.sms import generate_otp, validate_and_format_phone, send_otp_sms
+from app.services.sms import generate_otp, validate_and_format_phone, send_verification_token, check_verification_token
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ def register_routes(app):
                 session.permanent = True
                 session['user_id'] = user['id']
 
-                flash('Registration successful! Welcome to the pool.', 'success')
+                flash('Registration successful! Welcome to the pool. You will stay logged in on this device.', 'success')
                 return redirect(url_for('index'))
 
             except sqlite3.IntegrityError:
@@ -129,7 +129,7 @@ def register_routes(app):
 
             # Check if user already has valid session (same device)
             # Skip session check if force_otp is enabled (dev/testing)
-            if not force_otp and session.get('user_id') == user['id']:
+            if not force_otp and str(session.get('user_id')) == str(user['id']):
                 # Already logged in, just redirect
                 flash('Already logged in!', 'success')
                 return redirect(url_for('index'))
@@ -145,24 +145,8 @@ def register_routes(app):
                 flash('Too many verification attempts. Please try again in an hour.', 'error')
                 return render_template('auth/login.html', identifier=identifier)
 
-            # Generate OTP
-            otp_code = generate_otp()
-            otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
-            expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
-
-            try:
-                db.execute('''
-                    INSERT INTO otp_codes (user_id, code_hash, expires_at)
-                    VALUES (?, ?, ?)
-                ''', [user['id'], otp_hash, expires_at])
-                db.commit()
-            except sqlite3.Error as e:
-                logger.error(f"Failed to create OTP for user {user['id']}: {e}")
-                flash('Failed to send verification code. Please try again.', 'error')
-                return render_template('auth/login.html', identifier=identifier)
-
-            # Send SMS
-            success, result = send_otp_sms(user['phone_number'], otp_code)
+            # Send Verification (SMS or Local Generation)
+            success, result = send_verification_token(user['phone_number'])
 
             if not success:
                 flash(f'Failed to send verification code: {result}', 'error')
@@ -172,11 +156,26 @@ def register_routes(app):
             session['otp_user_id'] = user['id']
             session['otp_phone'] = user['phone_number']
 
-            # In NO_SMS_MODE, show OTP on page
+            # NO_SMS_MODE: Result is the OTP code. Store in DB and show on page.
             if current_app.config.get('NO_SMS_MODE'):
+                otp_code = result
+                otp_hash = hashlib.sha256(otp_code.encode()).hexdigest()
+                expires_at = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+
+                try:
+                    db.execute('''
+                        INSERT INTO otp_codes (user_id, code_hash, expires_at)
+                        VALUES (?, ?, ?)
+                    ''', [user['id'], otp_hash, expires_at])
+                    db.commit()
+                except sqlite3.Error as e:
+                    logger.error(f"Failed to create OTP for user {user['id']}: {e}")
+                    flash('Failed to generate verification code. Please try again.', 'error')
+                    return render_template('auth/login.html', identifier=identifier)
+
                 return render_template('auth/login_verify.html',
                                      phone=user['phone_number'],
-                                     otp_code=result)  # result contains code in dev mode
+                                     otp_code=otp_code)
 
             flash('Verification code sent! Check your phone.', 'info')
             return redirect(url_for('login_verify'))
@@ -196,32 +195,42 @@ def register_routes(app):
         if request.method == 'POST':
             entered_code = request.form.get('otp_code', '').strip()
 
-            if not entered_code or len(entered_code) != 6:
-                flash('Please enter the 6-digit code.', 'error')
+            if not entered_code or len(entered_code) != 4:
+                flash('Please enter the 4-digit code.', 'error')
                 return render_template('auth/login_verify.html', phone=phone)
 
             # Verify OTP
-            code_hash = hashlib.sha256(entered_code.encode()).hexdigest()
             db = get_db()
+            
+            # Dev Mode: Check Local DB
+            if current_app.config.get('NO_SMS_MODE'):
+                code_hash = hashlib.sha256(entered_code.encode()).hexdigest()
+                
+                otp_record = db.execute('''
+                    SELECT * FROM otp_codes
+                    WHERE user_id = ?
+                    AND code_hash = ?
+                    AND used_at IS NULL
+                    AND expires_at > datetime('now', 'utc')
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ''', [user_id, code_hash]).fetchone()
 
-            otp_record = db.execute('''
-                SELECT * FROM otp_codes
-                WHERE user_id = ?
-                AND code_hash = ?
-                AND used_at IS NULL
-                AND expires_at > datetime('now', 'utc')
-                ORDER BY created_at DESC
-                LIMIT 1
-            ''', [user_id, code_hash]).fetchone()
+                if not otp_record:
+                    flash('Invalid or expired code. Please try again.', 'error')
+                    return render_template('auth/login_verify.html', phone=phone)
 
-            if not otp_record:
-                flash('Invalid or expired code. Please try again.', 'error')
-                return render_template('auth/login_verify.html', phone=phone)
+                # Mark OTP as used
+                db.execute('UPDATE otp_codes SET used_at = ? WHERE id = ?',
+                          [datetime.now(timezone.utc).isoformat(), otp_record['id']])
+                db.commit()
 
-            # Mark OTP as used
-            db.execute('UPDATE otp_codes SET used_at = ? WHERE id = ?',
-                      [datetime.now(timezone.utc).isoformat(), otp_record['id']])
-            db.commit()
+            # Production Mode: Check Twilio Verify
+            else:
+                valid, msg = check_verification_token(phone, entered_code)
+                if not valid:
+                    flash(f'Verification failed: {msg}', 'error')
+                    return render_template('auth/login_verify.html', phone=phone)
 
             # Clear temporary session data
             session.pop('otp_user_id', None)
