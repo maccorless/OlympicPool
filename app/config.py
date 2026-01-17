@@ -16,14 +16,13 @@ BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
 # Admin authorization (whitelist)
 ADMIN_EMAILS = [email.strip() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
 
-# Resend API key (optional for dev)
-RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+# Twilio configuration for SMS OTP
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')  # E.164 format: +12065551234
 
-# Email from address
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'Olympic Medal Pool <noreply@yourdomain.com>')
-
-# Dev mode: show magic links on page instead of sending email
-NO_EMAIL_MODE = os.getenv('NO_EMAIL_MODE', 'True').lower() == 'true'
+# Dev mode: show OTP on page instead of sending SMS
+NO_SMS_MODE = os.getenv('NO_SMS_MODE', 'True').lower() == 'true'
 
 # Session configuration
 # Sessions valid until end of contest (March 31, 2026)

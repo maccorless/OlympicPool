@@ -1,4 +1,6 @@
 flask>=3.0
 gunicorn>=21.0
 python-dotenv>=1.0
-resend>=0.7
+twilio>=8.0
+phonenumbers>=8.13
+Flask-Limiter>=3.0

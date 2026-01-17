@@ -20,6 +20,7 @@ CREATE TABLE contest (
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL CHECK (email LIKE '%@%'),
+    phone_number TEXT UNIQUE NOT NULL,  -- E.164 format: +12065551234
     name TEXT NOT NULL,
     team_name TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -54,12 +55,12 @@ CREATE TABLE medals (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
--- Auth tokens (magic links, stores token_hash + user_id)
-CREATE TABLE tokens (
-    token_hash TEXT PRIMARY KEY,  -- SHA-256 hash of token
+-- OTP codes for new device authentication (SMS-based)
+CREATE TABLE otp_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_type TEXT NOT NULL DEFAULT 'magic_link' CHECK (token_type = 'magic_link'),
-    expires_at TEXT NOT NULL,  -- ISO8601 UTC
+    code_hash TEXT NOT NULL,  -- SHA-256 hash of 6-digit code
+    expires_at TEXT NOT NULL,  -- ISO8601 UTC (10 minutes from creation)
     used_at TEXT,  -- Set when consumed (single-use)
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -73,8 +74,8 @@ CREATE TABLE system_meta (
 
 -- Indexes
 CREATE INDEX idx_picks_user ON picks(user_id);
-CREATE INDEX idx_tokens_user_created ON tokens(user_id, created_at);  -- Compound index for rate limiting
-CREATE INDEX idx_tokens_expires ON tokens(expires_at);
+CREATE INDEX idx_otp_user_created ON otp_codes(user_id, created_at);  -- Compound index for rate limiting
+CREATE INDEX idx_otp_expires ON otp_codes(expires_at);
 
 -- ============================================================================
 -- INITIAL DATA
