@@ -15,6 +15,15 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Hidden logout button (top-left corner, reveals on hover) -->
+    {% if session.user_id %}
+    <a href="/logout"
+       class="fixed top-2 left-2 z-50 px-2 py-1 text-xs rounded transition-all duration-200 opacity-0 hover:opacity-100 bg-gray-200 hover:bg-red-100 text-gray-400 hover:text-red-600"
+       title="Logout (clears session)">
+        Logout
+    </a>
+    {% endif %}
+
     <nav class="bg-white shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
@@ -28,7 +37,6 @@
                         {% if user and user.email in config.ADMIN_EMAILS %}
                             <a href="/admin" class="text-purple-700 hover:text-purple-900 font-semibold">Admin</a>
                         {% endif %}
-                        <a href="/logout" class="text-gray-700 hover:text-gray-900">Logout</a>
                     {% else %}
                         <a href="/login" class="text-gray-700 hover:text-gray-900">Login</a>
                         <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register</a>
