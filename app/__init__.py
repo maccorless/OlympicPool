@@ -69,4 +69,25 @@ def create_app(test_config=None):
 
         return render_template('index.html', contest_state=contest['state'])
 
+    # One-time database setup endpoint (remove after first use)
+    @app.route('/setup-database-now')
+    def setup_database():
+        """Initialize database with new schema. Visit this URL once after deployment."""
+        from flask import jsonify
+        from app.db import init_db, load_countries
+
+        try:
+            init_db()
+            load_countries()
+            return jsonify({
+                'status': 'success',
+                'message': 'Database initialized successfully! You can now use the app.',
+                'next_step': 'Visit / to register'
+            })
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500
+
     return app
