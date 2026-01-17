@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def generate_otp():
     """Generate a 4-digit OTP code (for Dev/Local mode only)."""
-    return str(secrets.randbelow(1000000)).zfill(4)
+    return str(secrets.randbelow(10000)).zfill(4)
 
 
 def validate_and_format_phone(phone_input, default_region='US'):
