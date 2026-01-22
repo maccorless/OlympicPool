@@ -14,23 +14,37 @@
         <div class="max-w-2xl mx-auto">
             <p class="text-lg text-gray-700 mb-8">Draft your countries. Win bragging rights.</p>
 
-            <div class="bg-white shadow rounded-lg p-8 mb-8">
-                <h2 class="text-2xl font-bold mb-4">How It Works</h2>
-                <ol class="text-left space-y-3 text-gray-700">
-                    <li><span class="font-semibold">1.</span> Spend 200 points on up to 10 countries</li>
-                    <li><span class="font-semibold">2.</span> Earn points when your countries win medals (Gold=3, Silver=2, Bronze=1)</li>
-                    <li><span class="font-semibold">3.</span> Track your ranking on the leaderboard</li>
-                </ol>
-            </div>
-
             {% if not session.user_id %}
-                <div class="space-x-4">
+                <div class="space-x-4 mb-8">
                     <a href="/register" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Enter Contest</a>
                     <a href="/login" class="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg border-2 border-blue-600 hover:bg-blue-50 font-semibold">Login</a>
                 </div>
             {% else %}
-                <a href="/draft" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Go to Draft</a>
+                <div class="mb-8">
+                    <a href="/draft" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">Go to Draft</a>
+                </div>
             {% endif %}
+
+            <div class="bg-white shadow rounded-lg p-8">
+                <h2 class="text-2xl font-bold mb-4">How It Works</h2>
+                <ol class="text-left space-y-3 text-gray-700 mb-6">
+                    <li><span class="font-semibold">1.</span> Spend 200 points on up to 10 countries</li>
+                    <li><span class="font-semibold">2.</span> Earn points when your countries win medals (Gold=3, Silver=2, Bronze=1)</li>
+                    <li><span class="font-semibold">3.</span> Track your ranking on the leaderboard</li>
+                </ol>
+
+                <div class="border-t pt-4 text-gray-700">
+                    <p class="font-semibold mb-2">No entry fees. No prizes. Just bragging rights.</p>
+                    <p class="font-semibold mb-4">Entries due: Midnight CET on 6 February 2026</p>
+
+                    <div class="text-sm text-gray-600 mt-4">
+                        <p class="font-semibold mb-2">How country costs were determined:</p>
+                        <p class="leading-relaxed">
+                            Country costs are based on projected medal performance. We started with the final standings from the 2022 Beijing Winter Olympics, removed Russian and Belarusian medals (due to their suspension), and redistributed those medals to the next-best teams (4th, 5th, and 6th place finishers). These projections were then scaled to fit our 200-point budget, with costs calibrated so that you cannot select all three of the top medal contenders within the cap.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     {% elif contest_state == 'locked' or contest_state == 'complete' %}
         <div class="max-w-2xl mx-auto">
