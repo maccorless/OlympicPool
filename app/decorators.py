@@ -48,7 +48,8 @@ def admin_required(f):
         user = get_current_user()
         if not user:
             abort(401)
-        if user['email'] not in current_app.config['ADMIN_EMAILS']:
+        # Case-insensitive email comparison (both normalized to lowercase)
+        if user['email'].lower() not in current_app.config['ADMIN_EMAILS']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

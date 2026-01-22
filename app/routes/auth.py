@@ -37,7 +37,7 @@ def register_routes(app):
         """
         if request.method == 'POST':
             name = request.form.get('name', '').strip()
-            email = request.form.get('email', '').strip()
+            email = request.form.get('email', '').strip().lower()  # Normalize to lowercase
             phone_input = request.form.get('phone', '').strip()
             team_name = request.form.get('team_name', '').strip()
 
@@ -117,11 +117,12 @@ def register_routes(app):
             if valid_phone:
                 user = db.execute('SELECT * FROM users WHERE phone_number = ?', [phone_number]).fetchone()
             else:
-                # Try by email
+                # Try by email (normalize to lowercase for case-insensitive lookup)
                 if not is_valid_email(identifier):
                     flash('Invalid email or phone number format.', 'error')
                     return render_template('auth/login.html', identifier=identifier)
-                user = db.execute('SELECT * FROM users WHERE email = ?', [identifier]).fetchone()
+                email_lower = identifier.lower()
+                user = db.execute('SELECT * FROM users WHERE email = ?', [email_lower]).fetchone()
 
             if not user:
                 flash('No account found. Please register first.', 'error')

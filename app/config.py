@@ -13,8 +13,8 @@ DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
 # Base URL for magic links
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
 
-# Admin authorization (whitelist)
-ADMIN_EMAILS = [email.strip() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
+# Admin authorization (whitelist) - normalized to lowercase for case-insensitive comparison
+ADMIN_EMAILS = [email.strip().lower() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
 
 # Twilio configuration for SMS OTP
 TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
