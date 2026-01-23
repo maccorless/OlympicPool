@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy - Olympic Medal Pool{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
+
+    <div class="bg-white shadow rounded-lg p-8 prose prose-blue max-w-none">
+        <p class="text-sm text-gray-500 mb-6"><em>Last updated: January 23, 2026</em></p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">1. Introduction</h2>
+        <p class="text-gray-700 mb-4">
+            This privacy policy explains how the Olympic Medal Pool ("we", "us", "our") collects, uses, and protects
+            your personal information in accordance with the General Data Protection Regulation (GDPR) and applicable
+            data protection laws.
+        </p>
+        <p class="text-gray-700 mb-4">
+            The Olympic Medal Pool is a free, non-commercial fantasy sports game for the Milano Cortina 2026 Winter Olympics.
+            There are no entry fees and no prizes.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">2. Data Controller</h2>
+        <p class="text-gray-700 mb-4">
+            The data controller responsible for your personal information is:<br>
+            <strong>Olympic Medal Pool</strong><br>
+            Email: {{ config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS else 'admin@example.com' }}
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">3. What Personal Data We Collect</h2>
+        <p class="text-gray-700 mb-2">We collect the following personal information when you register:</p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li><strong>Email address</strong> - Used for account identification and login</li>
+            <li><strong>Phone number</strong> - Used for SMS-based authentication when logging in from new devices</li>
+            <li><strong>Name</strong> - Your real name for identification purposes</li>
+            <li><strong>Team name</strong> - Displayed publicly on the leaderboard</li>
+            <li><strong>Country picks</strong> - Your selected countries for the contest</li>
+        </ul>
+        <p class="text-gray-700 mb-4">
+            We also automatically collect:
+        </p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li><strong>Session cookies</strong> - To keep you logged in across visits</li>
+            <li><strong>Registration and login timestamps</strong> - For security and account management</li>
+        </ul>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">4. Legal Basis for Processing</h2>
+        <p class="text-gray-700 mb-4">
+            We process your personal data based on your <strong>consent</strong> when you voluntarily register for the contest.
+            By creating an account, you agree to the collection and use of your information as described in this policy.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">5. How We Use Your Data</h2>
+        <p class="text-gray-700 mb-2">We use your personal data for the following purposes:</p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li>To create and manage your account</li>
+            <li>To authenticate you when you log in</li>
+            <li>To display your team name and contest picks on the public leaderboard</li>
+            <li>To calculate and display your score during the Olympic Games</li>
+            <li>To send SMS verification codes when you log in from new devices</li>
+        </ul>
+        <p class="text-gray-700 mb-4">
+            <strong>We do not use your data for marketing, profiling, or any commercial purposes.</strong>
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">6. Data Sharing and Third Parties</h2>
+        <p class="text-gray-700 mb-4">
+            We share your data with the following third-party service providers:
+        </p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li>
+                <strong>Twilio</strong> (SMS service provider) - We use Twilio to send SMS verification codes to your
+                phone number. Twilio processes your phone number and verification codes in accordance with their
+                <a href="https://www.twilio.com/legal/privacy" target="_blank" class="text-blue-600 hover:underline">privacy policy</a>.
+            </li>
+            <li>
+                <strong>Railway</strong> (hosting provider) - Your data is stored on servers operated by Railway.
+                Railway acts as a data processor and does not access your data except for infrastructure maintenance.
+            </li>
+        </ul>
+        <p class="text-gray-700 mb-4">
+            <strong>We do not sell, rent, or share your personal data with any other third parties.</strong>
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">7. Public Information</h2>
+        <p class="text-gray-700 mb-4">
+            The following information is displayed publicly on the leaderboard:
+        </p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li>Your team name</li>
+            <li>Your real name</li>
+            <li>Your selected countries and their medal counts</li>
+            <li>Your total score</li>
+        </ul>
+        <p class="text-gray-700 mb-4">
+            Your email address and phone number are <strong>never</strong> displayed publicly.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">8. Data Retention</h2>
+        <p class="text-gray-700 mb-4">
+            We retain your personal data for the duration of the Milano Cortina 2026 Winter Olympics contest
+            (until March 31, 2026) plus a reasonable period afterwards for record-keeping.
+        </p>
+        <p class="text-gray-700 mb-4">
+            You may request deletion of your account at any time (see "Your Rights" below).
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">9. Data Security</h2>
+        <p class="text-gray-700 mb-4">
+            We implement appropriate technical and organizational measures to protect your personal data:
+        </p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-1">
+            <li>All data transmission is encrypted using HTTPS/TLS</li>
+            <li>Passwords are never stored (we use passwordless SMS authentication)</li>
+            <li>SMS verification codes are hashed before storage</li>
+            <li>Session cookies are HttpOnly and secure</li>
+            <li>Database access is restricted to authorized administrators only</li>
+        </ul>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">10. Cookies</h2>
+        <p class="text-gray-700 mb-4">
+            We use essential session cookies to keep you logged in. These cookies are necessary for the operation
+            of the application and cannot be disabled.
+        </p>
+        <p class="text-gray-700 mb-4">
+            We <strong>do not use</strong> analytics, advertising, or tracking cookies.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">11. Your Rights Under GDPR</h2>
+        <p class="text-gray-700 mb-4">
+            Under the General Data Protection Regulation, you have the following rights:
+        </p>
+        <ul class="list-disc list-inside mb-4 text-gray-700 space-y-2">
+            <li>
+                <strong>Right of access</strong> - You can request a copy of all personal data we hold about you.
+            </li>
+            <li>
+                <strong>Right to rectification</strong> - You can update your name, email, phone number, or team name
+                by contacting us.
+            </li>
+            <li>
+                <strong>Right to erasure ("right to be forgotten")</strong> - You can request deletion of your account
+                and all associated data at any time.
+            </li>
+            <li>
+                <strong>Right to restrict processing</strong> - You can ask us to restrict how we use your data.
+            </li>
+            <li>
+                <strong>Right to data portability</strong> - You can request your data in a structured, machine-readable format.
+            </li>
+            <li>
+                <strong>Right to object</strong> - You can object to processing of your personal data.
+            </li>
+            <li>
+                <strong>Right to withdraw consent</strong> - You can withdraw your consent and delete your account at any time.
+            </li>
+        </ul>
+        <p class="text-gray-700 mb-4">
+            To exercise any of these rights, please contact us at:
+            <a href="mailto:{{ config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS else 'admin@example.com' }}"
+               class="text-blue-600 hover:underline">
+                {{ config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS else 'admin@example.com' }}
+            </a>
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">12. International Data Transfers</h2>
+        <p class="text-gray-700 mb-4">
+            Your data may be transferred to and processed in countries outside the European Economic Area (EEA),
+            including the United States (where Railway and Twilio operate).
+        </p>
+        <p class="text-gray-700 mb-4">
+            We ensure that such transfers comply with GDPR requirements through the use of Standard Contractual Clauses
+            and adequate safeguards provided by our service providers.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">13. Children's Privacy</h2>
+        <p class="text-gray-700 mb-4">
+            This service is not directed to individuals under the age of 16. We do not knowingly collect personal
+            information from children. If you are a parent or guardian and believe your child has provided us with
+            personal data, please contact us.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">14. Changes to This Policy</h2>
+        <p class="text-gray-700 mb-4">
+            We may update this privacy policy from time to time. Any changes will be posted on this page with an
+            updated "Last updated" date.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">15. Supervisory Authority</h2>
+        <p class="text-gray-700 mb-4">
+            If you have concerns about how we handle your personal data, you have the right to lodge a complaint
+            with your local data protection authority in the EU.
+        </p>
+
+        <h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">16. Contact Us</h2>
+        <p class="text-gray-700 mb-4">
+            If you have any questions about this privacy policy or how we handle your personal data, please contact us:
+        </p>
+        <p class="text-gray-700 mb-4">
+            Email: <a href="mailto:{{ config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS else 'admin@example.com' }}"
+                      class="text-blue-600 hover:underline">
+                {{ config.ADMIN_EMAILS[0] if config.ADMIN_EMAILS else 'admin@example.com' }}
+            </a>
+        </p>
+
+        <div class="mt-8 pt-6 border-t">
+            <p class="text-center">
+                <a href="/" class="text-blue-600 hover:text-blue-700">← Back to Home</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

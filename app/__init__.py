@@ -69,4 +69,10 @@ def create_app(test_config=None):
 
         return render_template('index.html', contest_state=contest['state'])
 
+    # Privacy policy route
+    @app.route('/privacy')
+    def privacy():
+        from flask import render_template
+        return render_template('privacy.html')
+
     return app
