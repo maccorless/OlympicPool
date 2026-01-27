@@ -543,3 +543,45 @@ def register_routes(app):
             flash('Failed to remove user from contest.', 'error')
 
         return redirect(url_for('admin_users', event_slug=event_slug, contest_slug=contest_slug))
+
+    @app.route('/admin/import-data', methods=['POST'])
+    def admin_import_data_temp():
+        """
+        TEMPORARY endpoint for data import during initial deployment.
+        Accepts SQL and executes it. Remove this after initial data load!
+        """
+        from flask import current_app
+
+        # Check if global admin (most restrictive check)
+        user = get_current_user()
+        if not user:
+            return "Unauthorized", 401
+
+        global_admin_emails = current_app.config.get('GLOBAL_ADMIN_EMAILS', [])
+        if user['email'].lower() not in global_admin_emails:
+            return "Forbidden - Global admin access required", 403
+
+        # Get SQL from request body
+        sql_data = request.get_data(as_text=True)
+
+        if not sql_data:
+            return "No SQL data provided", 400
+
+        db = get_db()
+
+        try:
+            # Execute the SQL
+            db.executescript(sql_data)
+            db.commit()
+
+            # Get counts
+            events = db.execute('SELECT COUNT(*) as c FROM events').fetchone()['c']
+            contests = db.execute('SELECT COUNT(*) as c FROM contest').fetchone()['c']
+            users = db.execute('SELECT COUNT(*) as c FROM users').fetchone()['c']
+
+            return f"Import successful!\nEvents: {events}\nContests: {contests}\nUsers: {users}", 200
+
+        except sqlite3.Error as e:
+            db.rollback()
+            logger.error(f"Data import failed: {e}")
+            return f"Import failed: {str(e)}", 500
