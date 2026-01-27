@@ -6,7 +6,7 @@
 <div class="max-w-7xl mx-auto">
     <!-- Back to Dashboard -->
     <div class="mb-4">
-        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Dashboard
         </a>
     </div>
@@ -15,7 +15,7 @@
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900 mb-2">Medal Entry</h1>
         <p class="text-gray-600">Update medal counts for each country (points calculated automatically)</p>
-        <p class="text-sm text-gray-500 mt-2">💡 Tip: Start typing a country name to jump to that row. <a href="{{ url_for('admin_medals_bulk') }}" class="text-blue-600 hover:text-blue-800">Or bulk paste from Excel →</a></p>
+        <p class="text-sm text-gray-500 mt-2">💡 Tip: Start typing a country name to jump to that row. <a href="{{ url_for('admin_medals_bulk', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">Or bulk paste from Excel →</a></p>
     </div>
 
     <!-- Search indicator (hidden by default) -->
@@ -29,13 +29,13 @@
         <div class="text-6xl mb-4">🏅</div>
         <h2 class="text-2xl font-bold text-gray-900 mb-2">No Countries</h2>
         <p class="text-gray-600 mb-4">Import countries before entering medals.</p>
-        <a href="{{ url_for('admin_countries') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_countries', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             Go to Country Management →
         </a>
     </div>
     {% else %}
     <!-- Medal Entry Form -->
-    <form method="POST" action="{{ url_for('admin_medals', sort=sort_by, order=sort_order) }}">
+    <form method="POST" action="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug, sort=sort_by, order=sort_order) }}">
         <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
             <!-- Desktop View -->
             <div class="hidden md:block overflow-x-auto">
@@ -52,7 +52,7 @@
                             {% for col_key, col_name, align_class in columns %}
                             <th class="px-6 py-2 {{ align_class }}">
                                 {% set new_order = 'asc' if col_key != sort_by else ('desc' if sort_order == 'asc' else 'asc') %}
-                                <a href="{{ url_for('admin_medals', sort=col_key, order=new_order) }}"
+                                <a href="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug, sort=col_key, order=new_order) }}"
                                    class="group inline-flex items-center gap-1 text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700">
                                     {{ col_name }}
                                     {% if sort_by == col_key %}

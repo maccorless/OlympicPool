@@ -1,0 +1,16 @@
+{# Breadcrumb navigation for global admin pages #}
+<nav class="mb-6 text-sm text-gray-600">
+    <a href="{{ url_for('global_admin_dashboard') }}" class="hover:text-blue-600">Global Admin</a>
+    {% if breadcrumb_context %}
+        <span class="mx-2">&gt;</span>
+        <span class="text-gray-900">
+            {{ breadcrumb_context.action }}
+            {% if breadcrumb_context.name %}
+                "{{ breadcrumb_context.name }}"
+            {% endif %}
+            {% if breadcrumb_context.parent_name %}
+                ({{ breadcrumb_context.parent_name }})
+            {% endif %}
+        </span>
+    {% endif %}
+</nav>

@@ -2,9 +2,9 @@
 Leaderboard routes: public leaderboard and team detail views.
 """
 import logging
-from flask import render_template, abort, request
+from flask import render_template, abort, request, g
 from app.db import get_db
-from app.decorators import get_current_user
+from app.decorators import get_current_user, require_contest_context
 
 logger = logging.getLogger(__name__)
 
@@ -12,17 +12,18 @@ logger = logging.getLogger(__name__)
 def register_routes(app):
     """Register leaderboard routes with Flask app."""
 
-    @app.route('/leaderboard')
-    def leaderboard():
+    @app.route('/<event_slug>/<contest_slug>/leaderboard')
+    @require_contest_context
+    def leaderboard(event_slug, contest_slug):
         """Public leaderboard - visible in open/locked/complete states."""
         db = get_db()
         current_user = get_current_user()
 
-        # Get contest state
-        contest = db.execute('SELECT state FROM contest WHERE id = 1').fetchone()
+        # Get contest state from g.contest
+        contest_state = g.contest['state']
 
         # Only show leaderboard in open, locked, or complete states (not setup)
-        if contest['state'] == 'setup':
+        if contest_state == 'setup':
             abort(404)
 
         # Get sort parameters (default: points DESC)
@@ -63,7 +64,7 @@ def register_routes(app):
                     u.team_name ASC
                 '''
 
-        # Get leaderboard data
+        # Get leaderboard data (filtered by contest_id)
         teams = db.execute(f'''
             SELECT
                 u.id,
@@ -73,12 +74,14 @@ def register_routes(app):
                 COALESCE(SUM(m.silver), 0) as total_silver,
                 COALESCE(SUM(m.bronze), 0) as total_bronze,
                 COALESCE(SUM(m.points), 0) as total_points
-            FROM users u
-            JOIN picks p ON u.id = p.user_id
-            LEFT JOIN medals m ON p.country_code = m.country_code
+            FROM user_contest_info uci
+            JOIN users u ON uci.user_id = u.id
+            JOIN picks p ON u.id = p.user_id AND p.contest_id = uci.contest_id
+            LEFT JOIN medals m ON p.country_code = m.country_code AND m.event_id = p.event_id
+            WHERE uci.contest_id = ?
             GROUP BY u.id
             ORDER BY {order_clause}
-        ''').fetchall()
+        ''', [g.contest['id']]).fetchall()
 
         # First, calculate ranks based on standard tiebreaker (always points-based)
         # We need to sort by points temporarily to calculate correct ranks
@@ -114,10 +117,10 @@ def register_routes(app):
             all_countries = db.execute(f'''
                 SELECT p.user_id, c.code, c.iso_code, c.name
                 FROM picks p
-                JOIN countries c ON p.country_code = c.code
-                WHERE p.user_id IN ({placeholders})
+                JOIN countries c ON p.country_code = c.code AND p.event_id = c.event_id
+                WHERE p.contest_id = ? AND p.user_id IN ({placeholders})
                 ORDER BY p.user_id, c.name
-            ''', user_ids).fetchall()
+            ''', [g.contest['id']] + user_ids).fetchall()
 
             # Group countries by user_id
             countries_by_user = {}
@@ -141,38 +144,46 @@ def register_routes(app):
             team_dict['rank'] = rank_map[team['id']]  # Apply pre-calculated rank
             teams_list.append(team_dict)
 
-        # Get last updated timestamp from medals table
+        # Get last updated timestamp from medals table for this event
         last_update = db.execute('''
-            SELECT MAX(updated_at) as last_updated FROM medals
-        ''').fetchone()
+            SELECT MAX(updated_at) as last_updated FROM medals WHERE event_id = ?
+        ''', [g.contest['event_id']]).fetchone()
 
         return render_template('leaderboard/index.html',
                              teams=teams_list,
-                             contest_state=contest['state'],
+                             contest_state=contest_state,
                              sort_by=sort_by,
                              sort_order=sort_order,
                              last_updated=last_update['last_updated'] if last_update else None,
                              current_user_id=current_user['id'] if current_user else None)
 
-    @app.route('/team/<int:user_id>')
-    def team_detail(user_id):
+    @app.route('/<event_slug>/<contest_slug>/team/<int:user_id>')
+    @require_contest_context
+    def team_detail(event_slug, contest_slug, user_id):
         """View a specific team's picks and points breakdown."""
         db = get_db()
 
-        # Get contest state
-        contest = db.execute('SELECT state, budget FROM contest WHERE id = 1').fetchone()
+        # Get contest config from g.contest
+        contest_state = g.contest['state']
+        budget = g.contest['budget']
 
         # Only show team details in open, locked, or complete states (not setup)
-        if contest['state'] == 'setup':
+        if contest_state == 'setup':
             abort(404)
 
-        # Get user info
-        user = db.execute('SELECT id, name, team_name FROM users WHERE id = ?', [user_id]).fetchone()
+        # Get user info (team_name from users table, global across contests)
+        # Verify user is in this contest via user_contest_info
+        user = db.execute('''
+            SELECT u.id, u.name, u.team_name
+            FROM users u
+            JOIN user_contest_info uci ON u.id = uci.user_id
+            WHERE u.id = ? AND uci.contest_id = ?
+        ''', [user_id, g.contest['id']]).fetchone()
 
         if not user:
             abort(404)
 
-        # Get user's picks with medal data
+        # Get user's picks with medal data for this contest
         picks = db.execute('''
             SELECT c.code, c.iso_code, c.name, c.cost, c.expected_points,
                    COALESCE(m.gold, 0) as gold,
@@ -180,11 +191,11 @@ def register_routes(app):
                    COALESCE(m.bronze, 0) as bronze,
                    COALESCE(m.points, 0) as points
             FROM picks p
-            JOIN countries c ON p.country_code = c.code
-            LEFT JOIN medals m ON c.code = m.country_code
-            WHERE p.user_id = ?
+            JOIN countries c ON p.country_code = c.code AND p.event_id = c.event_id
+            LEFT JOIN medals m ON c.code = m.country_code AND m.event_id = c.event_id
+            WHERE p.user_id = ? AND p.contest_id = ?
             ORDER BY c.cost DESC
-        ''', [user_id]).fetchall()
+        ''', [user_id, g.contest['id']]).fetchall()
 
         # Calculate totals
         total_cost = sum(p['cost'] for p in picks)
@@ -201,5 +212,5 @@ def register_routes(app):
                              total_silver=total_silver,
                              total_bronze=total_bronze,
                              total_points=total_points,
-                             budget=contest['budget'],
-                             contest_state=contest['state'])
+                             budget=budget,
+                             contest_state=contest_state)

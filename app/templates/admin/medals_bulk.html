@@ -6,7 +6,7 @@
 <div class="max-w-4xl mx-auto">
     <!-- Back to Medal Entry -->
     <div class="mb-4">
-        <a href="{{ url_for('admin_medals') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Medal Entry
         </a>
     </div>
@@ -41,7 +41,7 @@ United States	10	9	7</pre>
     </div>
 
     <!-- Import Form -->
-    <form method="POST" action="{{ url_for('admin_medals_bulk') }}" class="bg-white shadow rounded-lg p-6">
+    <form method="POST" action="{{ url_for('admin_medals_bulk', event_slug=event.slug, contest_slug=contest.slug) }}" class="bg-white shadow rounded-lg p-6">
         <div class="mb-4">
             <label for="paste_data" class="block text-sm font-medium text-gray-700 mb-2">
                 Paste Medal Data Here:
@@ -74,7 +74,7 @@ Germany	12	11	8"
 
         <!-- Submit -->
         <div class="flex items-center justify-between">
-            <a href="{{ url_for('admin_medals') }}" class="text-gray-600 hover:text-gray-800">Cancel</a>
+            <a href="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-gray-600 hover:text-gray-800">Cancel</a>
             <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
                 Import Medal Data
             </button>

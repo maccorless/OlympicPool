@@ -13,17 +13,20 @@ DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
 # Base URL for magic links
 BASE_URL = os.getenv('BASE_URL', 'http://localhost:5000')
 
-# Admin authorization (whitelist)
-ADMIN_EMAILS = [email.strip() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
+# Admin authorization (whitelist) - normalized to lowercase for case-insensitive comparison
+ADMIN_EMAILS = [email.strip().lower() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
 
-# Resend API key (optional for dev)
-RESEND_API_KEY = os.getenv('RESEND_API_KEY')
+# Global admin authorization (can create/manage events and contests)
+# Separate from contest-level admins for future role-based access control
+GLOBAL_ADMIN_EMAILS = [email.strip().lower() for email in os.getenv('GLOBAL_ADMIN_EMAILS', os.getenv('ADMIN_EMAILS', '')).split(',') if email.strip()]
 
-# Email from address
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'Olympic Medal Pool <noreply@yourdomain.com>')
+# Twilio configuration for SMS OTP
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_VERIFY_SERVICE_SID = os.getenv('TWILIO_VERIFY_SERVICE_SID')
 
-# Dev mode: show magic links on page instead of sending email
-NO_EMAIL_MODE = os.getenv('NO_EMAIL_MODE', 'True').lower() == 'true'
+# Dev mode: show OTP on page instead of sending SMS
+NO_SMS_MODE = os.getenv('NO_SMS_MODE', 'True').lower() == 'true'
 
 # Session configuration
 # Sessions valid until end of contest (March 31, 2026)

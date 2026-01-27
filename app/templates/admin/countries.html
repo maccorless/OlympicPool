@@ -6,7 +6,7 @@
 <div class="max-w-7xl mx-auto">
     <!-- Back to Dashboard -->
     <div class="mb-4">
-        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Dashboard
         </a>
     </div>
@@ -20,7 +20,7 @@
     <!-- Import Form -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Import Countries from CSV</h2>
-        <form method="POST" action="{{ url_for('admin_countries_import') }}">
+        <form method="POST" action="{{ url_for('admin_countries_import', event_slug=event.slug, contest_slug=contest.slug) }}">
             <div class="mb-4">
                 <label for="csv_data" class="block text-sm font-medium text-gray-700 mb-2">
                     CSV Data

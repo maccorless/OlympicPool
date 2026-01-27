@@ -46,7 +46,7 @@
             <div class="text-lg font-semibold text-gray-900">{{ contest['deadline'] }}</div>
         </div>
         <div class="mt-6">
-            <a href="{{ url_for('admin_contest') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <a href="{{ url_for('admin_contest', event_slug=event.slug, contest_slug=contest.slug) }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 Edit Contest Settings
             </a>
         </div>
@@ -95,19 +95,19 @@
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <a href="{{ url_for('admin_contest') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+            <a href="{{ url_for('admin_contest', event_slug=event.slug, contest_slug=contest.slug) }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
                 <div class="text-lg mb-1">⚙️ Contest Settings</div>
                 <div class="text-xs text-gray-600">Edit name, state, budget, deadline</div>
             </a>
-            <a href="{{ url_for('admin_countries') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+            <a href="{{ url_for('admin_countries', event_slug=event.slug, contest_slug=contest.slug) }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
                 <div class="text-lg mb-1">🌍 Countries</div>
                 <div class="text-xs text-gray-600">Import and manage countries</div>
             </a>
-            <a href="{{ url_for('admin_medals') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+            <a href="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug) }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
                 <div class="text-lg mb-1">🏅 Medal Entry</div>
                 <div class="text-xs text-gray-600">Update medal counts manually</div>
             </a>
-            <a href="{{ url_for('admin_users') }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
+            <a href="{{ url_for('admin_users', event_slug=event.slug, contest_slug=contest.slug) }}" class="block p-4 border border-gray-200 rounded hover:bg-gray-50">
                 <div class="text-lg mb-1">👥 Users</div>
                 <div class="text-xs text-gray-600">View all registered users</div>
             </a>

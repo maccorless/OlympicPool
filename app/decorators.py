@@ -145,7 +145,31 @@ def admin_required(f):
         user = get_current_user()
         if not user:
             abort(401)
-        if user['email'] not in current_app.config['ADMIN_EMAILS']:
+        # Case-insensitive email comparison (ADMIN_EMAILS normalized in config)
+        if user['email'].lower() not in current_app.config['ADMIN_EMAILS']:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def global_admin_required(f):
+    """
+    Decorator to require global admin user (based on GLOBAL_ADMIN_EMAILS config).
+
+    Global admins can:
+    - Create/edit/delete events
+    - Create/edit/delete contests
+    - Access system-wide settings
+
+    This is separate from contest-level admins for future role-based access control.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            abort(401)
+        # Case-insensitive email comparison (GLOBAL_ADMIN_EMAILS normalized in config)
+        if user['email'].lower() not in current_app.config['GLOBAL_ADMIN_EMAILS']:
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Event - Global Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Breadcrumbs -->
+    {% include 'admin/global/_breadcrumbs.html' %}
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-red-900 mb-2">⚠️ Delete Event</h1>
+        <p class="text-gray-600">This action cannot be undone</p>
+    </div>
+
+    <!-- Warning Card -->
+    <div class="bg-red-50 border-2 border-red-300 rounded-lg p-8 mb-6">
+        <div class="flex items-start gap-4">
+            <div class="text-4xl">🚨</div>
+            <div class="flex-1">
+                <h2 class="text-xl font-bold text-red-900 mb-3">
+                    Are you sure you want to delete this event?
+                </h2>
+
+                <div class="bg-white rounded p-4 mb-4">
+                    <div class="font-bold text-lg text-gray-900 mb-2">{{ event.name }}</div>
+                    <div class="text-sm text-gray-600">
+                        <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{ event.slug }}</span>
+                    </div>
+                    {% if event.description %}
+                        <div class="text-sm text-gray-600 mt-2">{{ event.description }}</div>
+                    {% endif %}
+                    <div class="text-sm text-gray-500 mt-2">
+                        📅 {{ event.start_date }} to {{ event.end_date }}
+                    </div>
+                </div>
+
+                <div class="space-y-2 mb-4">
+                    <p class="font-semibold text-red-900">This will permanently delete:</p>
+                    <ul class="list-disc list-inside space-y-1 text-red-800">
+                        <li>{{ stats.contest_count }} contest(s) within this event</li>
+                        <li>{{ stats.user_count }} user registration(s) for those contests</li>
+                        <li>{{ stats.pick_count }} pick(s) made in those contests</li>
+                        <li>{{ stats.country_count }} countries configured for this event</li>
+                        <li>All medals data for this event</li>
+                    </ul>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-300 rounded p-3 mb-4">
+                    <p class="text-sm text-yellow-900">
+                        <strong>⚠️ Warning:</strong> All user data for contests in this event will be permanently lost.
+                        Users will not be able to access their picks or see their standings.
+                    </p>
+                </div>
+
+                <p class="text-red-900 font-semibold">
+                    This action cannot be undone. Are you absolutely sure?
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('global_admin_dashboard') }}" class="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+            ← Cancel
+        </a>
+        <form method="POST" action="{{ url_for('global_admin_event_delete', event_id=event.id) }}" class="inline">
+            <input type="hidden" name="confirmed" value="yes">
+            <button type="submit"
+                    onclick="return confirm('Final confirmation: Delete event {{ event.name }}?')"
+                    class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-semibold">
+                🗑️ Yes, Delete Event
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

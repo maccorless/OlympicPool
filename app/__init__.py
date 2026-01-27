@@ -45,28 +45,31 @@ def create_app(test_config=None):
     from app import db
     db.init_app(app)
 
-    # Context processor to make user available in all templates
+    # Context processor to make user and config available in all templates
     @app.context_processor
     def inject_user():
         from app.decorators import get_current_user
-        return {'user': get_current_user()}
+        from flask import g, current_app
+
+        context = {
+            'user': get_current_user(),
+            'config': current_app.config  # Make config available in templates
+        }
+
+        # Inject contest and event if available
+        if hasattr(g, 'contest') and g.contest:
+            context['contest'] = g.contest
+            context['event'] = g.event
+
+        return context
 
     # Register all routes (imported here to avoid circular imports)
-    from app.routes import auth, draft, leaderboard, admin
+    from app.routes import events, auth, draft, leaderboard, admin, global_admin
+    events.register_routes(app)  # FIRST - defines /
     auth.register_routes(app)
     draft.register_routes(app)
     leaderboard.register_routes(app)
     admin.register_routes(app)
-
-    # Home route
-    @app.route('/')
-    def index():
-        from flask import render_template
-        from app.db import get_db
-
-        db_conn = get_db()
-        contest = db_conn.execute('SELECT state FROM contest WHERE id = 1').fetchone()
-
-        return render_template('index.html', contest_state=contest['state'])
+    global_admin.register_routes(app)  # Global admin routes (no contest context required)
 
     return app

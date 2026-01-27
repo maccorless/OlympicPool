@@ -149,31 +149,91 @@ VALUES (1, 'Milano Cortina 2026', 'setup', 200, 10, '2026-02-04T23:59:59Z');
 
 ---
 
+## Multi-Event / Multi-Contest Architecture
+
+The app supports **multiple Olympic events** (e.g., Milano Cortina 2026, LA 2028) and **multiple contests per event** (e.g., office pool, friends pool).
+
+**URL Structure:**
+```
+/{event_slug}/{contest_slug}/{page}
+
+Examples:
+  /milano-2026/office-pool/leaderboard
+  /milano-2026/friends-pool/draft
+  /la-2028/work-pool/leaderboard
+```
+
+**Database Structure:**
+- `events` table: Olympic events (Milano 2026, LA 2028, etc.)
+- `contest` table: Contests within events (office-pool, friends-pool, etc.)
+- `countries` table: Countries are scoped per event (Milano 2026 has different countries than LA 2028)
+- `users` table: Users are global (can participate in multiple contests)
+- `picks` table: Picks are scoped per contest
+- `user_contest_info` table: Tracks user registrations per contest
+
+**Global Admin Routes:**
+- `/admin/global` - System-wide admin dashboard
+- `/admin/global/events/create` - Create new event
+- `/admin/global/contests/create` - Create new contest
+
+---
+
 ## Route Contract
+
+**Contest Selection:**
 
 | Method | Path | Auth | Returns | Description |
 |--------|------|------|---------|-------------|
-| GET | `/` | No | Page | Home - shows CTA based on contest state |
-| GET | `/register` | No | Page | Registration form |
-| POST | `/register` | No | Redirect | Create user + send magic link |
-| GET | `/login` | No | Page | Login form (request magic link) |
-| POST | `/login` | No | Redirect | Send magic link to existing user |
-| GET | `/auth/<token>` | No | Redirect | Consume magic link, set session, redirect to `/draft` or `/` |
+| GET | `/` | No | Page | Contest selector - shows all active events/contests |
+
+**Contest-Scoped Routes:**
+
+All contest routes follow the pattern `/<event_slug>/<contest_slug>/{endpoint}`
+
+| Method | Path | Auth | Returns | Description |
+|--------|------|------|---------|-------------|
+| GET | `/<event_slug>/<contest_slug>` | No | Page | Contest home - redirects based on state/auth |
+| GET | `/<event_slug>/<contest_slug>/register` | No | Page | Registration form |
+| POST | `/<event_slug>/<contest_slug>/register` | No | Redirect | Create user + send magic link |
+| GET | `/<event_slug>/<contest_slug>/login` | No | Page | Login form (request SMS OTP) |
+| POST | `/<event_slug>/<contest_slug>/login` | No | Redirect | Send SMS OTP to user |
+| GET | `/<event_slug>/<contest_slug>/login/verify` | No | Page | OTP verification form |
+| POST | `/<event_slug>/<contest_slug>/login/verify` | No | Redirect | Verify OTP and login |
 | GET | `/logout` | Yes | Redirect | Clear session, redirect to `/` |
-| GET | `/draft` | Yes | Page | Draft picker (state must be `open`) |
-| POST | `/draft/toggle` | Yes | Fragment | HTMX: toggle country selection, return updated picker state |
-| POST | `/draft/submit` | Yes | Redirect | Submit final picks (state must be `open`) |
-| GET | `/leaderboard` | No | Page | Public leaderboard (visible in `open`, `locked`, `complete`) |
-| GET | `/team/<user_id>` | No | Page | View user's picks and points breakdown |
-| GET | `/my-picks` | Yes | Page | Current user's picks (read-only if locked) |
-| GET | `/admin` | Admin | Page | Admin dashboard |
-| GET | `/admin/contest` | Admin | Page | Edit contest config |
-| POST | `/admin/contest` | Admin | Redirect | Update contest config |
-| GET | `/admin/countries` | Admin | Page | Country list + import form |
-| POST | `/admin/countries/import` | Admin | Redirect | Import countries from CSV |
-| GET | `/admin/medals` | Admin | Page | Medal entry form |
-| POST | `/admin/medals` | Admin | Redirect | Update medal counts |
-| GET | `/admin/users` | Admin | Page | User list |
+| GET | `/<event_slug>/<contest_slug>/draft` | Yes | Page | Draft picker (state must be `open`) |
+| POST | `/<event_slug>/<contest_slug>/draft/submit` | Yes | Redirect | Submit final picks (state must be `open`) |
+| GET | `/<event_slug>/<contest_slug>/leaderboard` | No | Page | Public leaderboard (visible in `open`, `locked`, `complete`) |
+| GET | `/<event_slug>/<contest_slug>/team/<user_id>` | No | Page | View user's picks and points breakdown |
+| GET | `/<event_slug>/<contest_slug>/my-picks` | Yes | Page | Current user's picks (read-only if locked) |
+
+**Contest Admin Routes:**
+
+| Method | Path | Auth | Returns | Description |
+|--------|------|------|---------|-------------|
+| GET | `/<event_slug>/<contest_slug>/admin` | Admin | Page | Contest admin dashboard |
+| GET | `/<event_slug>/<contest_slug>/admin/contest` | Admin | Page | Edit contest config |
+| POST | `/<event_slug>/<contest_slug>/admin/contest` | Admin | Redirect | Update contest config |
+| GET | `/<event_slug>/<contest_slug>/admin/countries` | Admin | Page | Country list + import form |
+| POST | `/<event_slug>/<contest_slug>/admin/countries/import` | Admin | Redirect | Import countries from CSV |
+| GET | `/<event_slug>/<contest_slug>/admin/medals` | Admin | Page | Medal entry form |
+| POST | `/<event_slug>/<contest_slug>/admin/medals` | Admin | Redirect | Update medal counts |
+| GET | `/<event_slug>/<contest_slug>/admin/users` | Admin | Page | User list |
+
+**Global Admin Routes:**
+
+| Method | Path | Auth | Returns | Description |
+|--------|------|------|---------|-------------|
+| GET | `/admin/global` | GlobalAdmin | Page | Global admin dashboard (unified hierarchical interface) |
+| GET | `/admin/global/events/create` | GlobalAdmin | Page | Create new event |
+| POST | `/admin/global/events/create` | GlobalAdmin | Redirect | Save new event |
+| GET | `/admin/global/events/<id>/edit` | GlobalAdmin | Page | Edit event |
+| POST | `/admin/global/events/<id>/edit` | GlobalAdmin | Redirect | Update event |
+| POST | `/admin/global/events/<id>/delete` | GlobalAdmin | Redirect | Delete event (with confirmation) |
+| GET | `/admin/global/contests/create` | GlobalAdmin | Page | Create new contest |
+| POST | `/admin/global/contests/create` | GlobalAdmin | Redirect | Save new contest |
+| GET | `/admin/global/contests/<id>/edit` | GlobalAdmin | Page | Edit contest |
+| POST | `/admin/global/contests/<id>/edit` | GlobalAdmin | Redirect | Update contest |
+| POST | `/admin/global/contests/<id>/delete` | GlobalAdmin | Redirect | Delete contest (with confirmation) |
 
 **Fragment vs Page:**
 - Routes returning **Page** render `base.html` with full HTML document
@@ -186,28 +246,34 @@ VALUES (1, 'Milano Cortina 2026', 'setup', 200, 10, '2026-02-04T23:59:59Z');
 ```
 app/templates/
 ├── base.html                    # Base layout with nav, HTMX/Alpine includes
-├── index.html                   # Home page (contest state-aware)
+├── events/
+│   └── contest_selector.html    # Contest selector (home page)
 ├── auth/
 │   ├── register.html            # Registration form
-│   ├── login.html               # Login form
-│   └── check_email.html         # "Check your email" confirmation
+│   ├── login.html               # Login form (SMS OTP)
+│   └── login_verify.html        # OTP verification form
 ├── draft/
 │   ├── picker.html              # Full draft page with Alpine.js state
-│   ├── _country_card.html       # Fragment: single country card
-│   ├── _selected_list.html      # Fragment: selected countries summary
-│   └── _budget_bar.html         # Fragment: remaining budget display
+│   └── my_picks.html            # User's current picks
 ├── leaderboard/
 │   ├── index.html               # Main leaderboard
 │   └── team.html                # Single team detail view
 ├── admin/
-│   ├── index.html               # Admin dashboard
+│   ├── index.html               # Contest admin dashboard
 │   ├── contest.html             # Contest config form
 │   ├── countries.html           # Country list + import
-│   ├── medals.html              # Medal entry form
+│   ├── medals.html              # Medal entry form (single entry)
+│   ├── medals_bulk.html         # Medal entry form (bulk paste from Excel)
 │   └── users.html               # User list
-└── email/
-    ├── magic_link.html          # Magic link email body
-    └── picks_confirmed.html     # Picks confirmation email body
+└── admin/global/
+    ├── dashboard.html           # Global admin unified dashboard
+    ├── event_form.html          # Create/edit event form
+    ├── event_delete_confirm.html# Event deletion confirmation
+    ├── contest_form.html        # Create/edit contest form
+    ├── contest_delete_confirm.html # Contest deletion confirmation
+    ├── _breadcrumbs.html        # Reusable breadcrumb navigation
+    ├── _event_section.html      # Expandable event section (native <details>)
+    └── _contest_card.html       # Contest card with shareable URL
 ```
 
 ---
@@ -541,69 +607,147 @@ Keep interactions fast and predictable. Users should never wonder "did that work
 
 ## Admin Authorization
 
+### Two Admin Levels
+
+1. **Contest Admins** - Can manage a specific contest (medals, countries, users)
+   - Configured per-contest via `ADMIN_EMAILS` in `.env`
+   - Access: `/<event_slug>/<contest_slug>/admin/*`
+
+2. **Global Admins** - Can create/manage events and contests
+   - Configured via `GLOBAL_ADMIN_EMAILS` in `.env`
+   - Access: `/admin/global/*`
+
 ```python
 # config.py
-ADMIN_EMAILS = os.getenv('ADMIN_EMAILS', '').split(',')
+# Contest-level admins (comma-separated emails)
+ADMIN_EMAILS = [email.strip().lower() for email in os.getenv('ADMIN_EMAILS', '').split(',') if email.strip()]
+
+# Global admins (can create/manage events and contests)
+GLOBAL_ADMIN_EMAILS = [email.strip().lower() for email in os.getenv('GLOBAL_ADMIN_EMAILS', os.getenv('ADMIN_EMAILS', '')).split(',') if email.strip()]
 
 # decorators.py
 from functools import wraps
-from flask import current_app, abort, g
+from flask import current_app, abort, g, request
 
-def get_current_user():
-    """Get current user from session."""
-    user_id = session.get('user_id')
-    if not user_id:
+def get_contest_from_url():
+    """
+    Extract contest and event from URL path.
+    Expected URL pattern: /<event_slug>/<contest_slug>/...
+    Returns: Dict with contest and event info, or None if not found.
+    """
+    if 'cached_contest' in g:
+        return g.cached_contest
+
+    path_parts = request.path.strip('/').split('/')
+    if len(path_parts) < 2:
         return None
-    db = get_db()
-    return db.execute('SELECT * FROM users WHERE id = ?', [user_id]).fetchone()
 
-def login_required(f):
+    event_slug = path_parts[0]
+    contest_slug = path_parts[1]
+
+    db = get_db()
+    result = db.execute('''
+        SELECT c.*, e.*
+        FROM contest c
+        JOIN events e ON c.event_id = e.id
+        WHERE e.slug = ? AND c.slug = ?
+    ''', [event_slug, contest_slug]).fetchone()
+
+    if not result:
+        return None
+
+    # Cache in g for this request
+    g.cached_contest = {
+        'contest': dict(result),
+        'event': dict(result)
+    }
+    return g.cached_contest
+
+def contest_required(f):
+    """Decorator to ensure valid contest context exists."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not get_current_user():
-            return redirect(url_for('auth.login'))
+        contest_data = get_contest_from_url()
+        if not contest_data:
+            abort(404, "Contest not found")
+
+        # Store in g for use by route
+        g.contest = contest_data['contest']
+        g.event = contest_data['event']
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+def login_required(f):
+    """Decorator to require user authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            # Redirect to login for this contest
+            if 'event_slug' in kwargs and 'contest_slug' in kwargs:
+                return redirect(url_for('login',
+                                      event_slug=kwargs['event_slug'],
+                                      contest_slug=kwargs['contest_slug']))
+            abort(401)
         return f(*args, **kwargs)
     return decorated_function
 
 def admin_required(f):
+    """Decorator to require contest admin authorization."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         user = get_current_user()
         if not user:
             abort(401)
-        if user['email'] not in current_app.config['ADMIN_EMAILS']:
-            abort(403)
+
+        admin_emails = current_app.config.get('ADMIN_EMAILS', [])
+        if user['email'].lower() not in admin_emails:
+            abort(403, "Contest admin access required")
+
         return f(*args, **kwargs)
     return decorated_function
 
-def require_state(*allowed_states):
-    """Decorator to enforce contest state. Usage: @require_state('open')"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            db = get_db()
-            contest = db.execute('SELECT state FROM contest WHERE id = 1').fetchone()
-            if contest['state'] not in allowed_states:
-                abort(403, f"Action not allowed in '{contest['state']}' state")
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+def global_admin_required(f):
+    """Decorator to require global admin authorization."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            abort(401)
+
+        global_admin_emails = current_app.config.get('GLOBAL_ADMIN_EMAILS', [])
+        if user['email'].lower() not in global_admin_emails:
+            abort(403, "Global admin access required")
+
+        return f(*args, **kwargs)
+    return decorated_function
 ```
 
 **Usage:**
 ```python
-@app.route('/draft/submit', methods=['POST'])
+# Contest-scoped route with authentication
+@app.route('/<event_slug>/<contest_slug>/draft')
+@contest_required
 @login_required
-@require_state('open')
-def submit_draft():
-    # Only executes if contest.state == 'open'
+def draft(event_slug, contest_slug):
+    # g.contest and g.event are available
+    # Only executes if contest exists and user is logged in
     ...
 
-@app.route('/admin/medals', methods=['POST'])
+# Contest admin route
+@app.route('/<event_slug>/<contest_slug>/admin/medals', methods=['POST'])
+@contest_required
 @admin_required
-@require_state('locked', 'complete')
-def update_medals():
-    # Only executes if contest.state in ('locked', 'complete')
+def update_medals(event_slug, contest_slug):
+    # Only executes if user is contest admin
+    ...
+
+# Global admin route
+@app.route('/admin/global')
+@global_admin_required
+def global_admin_dashboard():
+    # Only executes if user is global admin
     ...
 ```
 

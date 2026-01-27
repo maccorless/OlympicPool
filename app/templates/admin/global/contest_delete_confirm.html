@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Contest - Global Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Breadcrumbs -->
+    {% include 'admin/global/_breadcrumbs.html' %}
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-red-900 mb-2">⚠️ Delete Contest</h1>
+        <p class="text-gray-600">This action cannot be undone</p>
+    </div>
+
+    <!-- Warning Card -->
+    <div class="bg-red-50 border-2 border-red-300 rounded-lg p-8 mb-6">
+        <div class="flex items-start gap-4">
+            <div class="text-4xl">🚨</div>
+            <div class="flex-1">
+                <h2 class="text-xl font-bold text-red-900 mb-3">
+                    Are you sure you want to delete this contest?
+                </h2>
+
+                <div class="bg-white rounded p-4 mb-4">
+                    <div class="font-bold text-lg text-gray-900 mb-2">{{ contest.name }}</div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <span class="font-mono bg-gray-100 px-2 py-1 rounded">{{ contest.event_slug }}/{{ contest.slug }}</span>
+                    </div>
+                    <div class="text-sm text-gray-600">Event: {{ contest.event_name }}</div>
+                    {% if contest.description %}
+                        <div class="text-sm text-gray-600 mt-2">{{ contest.description }}</div>
+                    {% endif %}
+                    <div class="text-sm text-gray-500 mt-2">
+                        💰 Budget: {{ contest.budget }} • 🌍 Max: {{ contest.max_countries }} •
+                        {% if contest.state == 'setup' %}
+                            <span class="text-gray-600">Setup</span>
+                        {% elif contest.state == 'open' %}
+                            <span class="text-green-600">Open</span>
+                        {% elif contest.state == 'locked' %}
+                            <span class="text-blue-600">Locked</span>
+                        {% elif contest.state == 'complete' %}
+                            <span class="text-purple-600">Complete</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="space-y-2 mb-4">
+                    <p class="font-semibold text-red-900">This will permanently delete:</p>
+                    <ul class="list-disc list-inside space-y-1 text-red-800">
+                        <li>{{ stats.user_count }} user registration(s) for this contest</li>
+                        <li>{{ stats.pick_count }} pick(s) made in this contest</li>
+                        <li>All leaderboard data for this contest</li>
+                    </ul>
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-300 rounded p-3 mb-4">
+                    <p class="text-sm text-yellow-900">
+                        <strong>⚠️ Warning:</strong> Users who participated in this contest will lose all their picks and standings.
+                        They will need to re-register if the contest is recreated.
+                    </p>
+                </div>
+
+                <div class="bg-blue-50 border border-blue-300 rounded p-3 mb-4">
+                    <p class="text-sm text-blue-900">
+                        <strong>ℹ️ Note:</strong> The event "{{ contest.event_name }}" and its countries/medals will not be affected.
+                        Only this contest and its user data will be deleted.
+                    </p>
+                </div>
+
+                <p class="text-red-900 font-semibold">
+                    This action cannot be undone. Are you absolutely sure?
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center justify-between">
+        <a href="{{ url_for('global_admin_dashboard') }}" class="px-6 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+            ← Cancel
+        </a>
+        <form method="POST" action="{{ url_for('global_admin_contest_delete', contest_id=contest.id) }}" class="inline">
+            <input type="hidden" name="confirmed" value="yes">
+            <button type="submit"
+                    onclick="return confirm('Final confirmation: Delete contest {{ contest.name }}?')"
+                    class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-semibold">
+                🗑️ Yes, Delete Contest
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

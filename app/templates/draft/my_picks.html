@@ -10,7 +10,7 @@
             <p class="text-gray-600">{{ user['name'] }}'s Team</p>
         </div>
         {% if contest_state == 'open' %}
-        <a href="{{ url_for('draft') }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+        <a href="{{ url_for('draft', event_slug=event.slug, contest_slug=contest.slug) }}" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
             Edit Picks
         </a>
         {% endif %}
@@ -43,7 +43,7 @@
         <h2 class="text-2xl font-bold text-gray-900 mb-2">No Picks Yet</h2>
         <p class="text-gray-600 mb-6">You haven't selected any countries for your team.</p>
         {% if contest_state == 'open' %}
-        <a href="{{ url_for('draft') }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+        <a href="{{ url_for('draft', event_slug=event.slug, contest_slug=contest.slug) }}" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
             Start Drafting
         </a>
         {% else %}

@@ -37,16 +37,17 @@ CREATE TABLE contest (
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL CHECK (email LIKE '%@%'),
+    phone_number TEXT NOT NULL,  -- E.164 format: +12065551234 (NOT unique - allows multiple accounts per phone)
     name TEXT NOT NULL,
+    team_name TEXT NOT NULL,  -- User's fantasy team name (global across contests)
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
--- User-Contest relationship (team names are per-contest)
+-- User-Contest relationship (tracks which users are in which contests)
 CREATE TABLE user_contest_info (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     contest_id INTEGER NOT NULL REFERENCES contest(id) ON DELETE CASCADE,
-    team_name TEXT NOT NULL,  -- User's fantasy team name for this contest
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, contest_id)
 );
@@ -88,13 +89,12 @@ CREATE TABLE medals (
     FOREIGN KEY (event_id, country_code) REFERENCES countries(event_id, code)
 );
 
--- Auth tokens (magic links, stores token_hash + contest_id)
-CREATE TABLE tokens (
-    token_hash TEXT PRIMARY KEY,  -- SHA-256 hash of token
+-- OTP codes for SMS verification (global device verification, not contest-specific)
+CREATE TABLE otp_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    contest_id INTEGER REFERENCES contest(id) ON DELETE CASCADE,
-    token_type TEXT NOT NULL DEFAULT 'magic_link' CHECK (token_type = 'magic_link'),
-    expires_at TEXT NOT NULL,  -- ISO8601 UTC
+    code_hash TEXT NOT NULL,  -- SHA-256 hash of 4-digit code
+    expires_at TEXT NOT NULL,  -- ISO8601 UTC (10 minutes from creation)
     used_at TEXT,  -- Set when consumed (single-use)
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -116,8 +116,8 @@ CREATE INDEX idx_medals_event ON medals(event_id, country_code);
 CREATE INDEX idx_picks_contest_user ON picks(contest_id, user_id);
 CREATE INDEX idx_picks_event_country ON picks(event_id, country_code);
 CREATE INDEX idx_user_contest_info ON user_contest_info(user_id, contest_id);
-CREATE INDEX idx_tokens_contest_user ON tokens(contest_id, user_id, created_at);
-CREATE INDEX idx_tokens_expires ON tokens(expires_at);
+CREATE INDEX idx_otp_user_created ON otp_codes(user_id, created_at);
+CREATE INDEX idx_otp_expires ON otp_codes(expires_at);
 
 -- ============================================================================
 -- INITIAL DATA
@@ -131,3 +131,12 @@ VALUES (1, 'Milano Cortina 2026', 'milano-2026', 'XXV Winter Olympic Games', '20
 -- Deadline: Feb 4, 2026 at 18:00 CET (17:00 UTC)
 INSERT OR IGNORE INTO contest (id, event_id, slug, name, description, state, budget, max_countries, deadline)
 VALUES (1, 1, 'default', 'XXV Winter Olympic Games', 'Main contest pool', 'setup', 200, 10, '2026-02-04T17:00:00Z');
+
+-- Create administrator account (ken@corless.com)
+-- Phone placeholder - user must provide real phone on first login
+INSERT OR IGNORE INTO users (id, email, phone_number, name, team_name)
+VALUES (1, 'ken@corless.com', '+10000000000', 'Ken Corless', 'Admin Team');
+
+-- Register administrator for default contest
+INSERT OR IGNORE INTO user_contest_info (user_id, contest_id)
+VALUES (1, 1);

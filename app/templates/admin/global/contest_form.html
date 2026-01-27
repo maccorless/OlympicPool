@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{% if contest %}Edit Contest{% else %}Create Contest{% endif %} - Global Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Breadcrumbs -->
+    {% include 'admin/global/_breadcrumbs.html' %}
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            {% if contest %}Edit Contest{% else %}Create New Contest{% endif %}
+        </h1>
+        <p class="text-gray-600">Contest/pool configuration</p>
+    </div>
+
+    <!-- Form -->
+    <div class="bg-white shadow rounded-lg p-8">
+        <form method="POST">
+            <!-- Event Selection -->
+            <div class="mb-6">
+                <label for="event_id" class="block text-gray-700 font-semibold mb-2">
+                    Event <span class="text-red-500">*</span>
+                </label>
+                <select id="event_id" name="event_id" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">-- Select Event --</option>
+                    {% for event in events %}
+                        <option value="{{ event.id }}"
+                                {% if contest and contest.event_id == event.id %}selected{% endif %}>
+                            {{ event.name }} ({{ event.slug }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <p class="text-sm text-gray-500 mt-1">Which Olympic Games this contest belongs to</p>
+            </div>
+
+            <!-- Slug -->
+            <div class="mb-6">
+                <label for="slug" class="block text-gray-700 font-semibold mb-2">
+                    Slug <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="slug" name="slug" required pattern="[a-z0-9\-]+"
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="office-pool"
+                       value="{{ contest.slug if contest else '' }}">
+                <p class="text-sm text-gray-500 mt-1">URL-friendly identifier (lowercase, hyphens, numbers only)</p>
+                {% if contest %}
+                <div class="mt-2 p-3 bg-yellow-50 border border-yellow-300 rounded">
+                    <p class="text-sm text-yellow-900">
+                        <strong>⚠️ Warning:</strong> Changing the slug will break the contest URL that users have bookmarked or shared.
+                        <br>Current URL: <code class="font-mono bg-white px-1">{{ base_url.rstrip('/') }}/{{ contest.event_slug }}/{{ contest.slug }}</code>
+                        <br>Only change this if absolutely necessary.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Name -->
+            <div class="mb-6">
+                <label for="name" class="block text-gray-700 font-semibold mb-2">
+                    Contest Name <span class="text-red-500">*</span>
+                </label>
+                <input type="text" id="name" name="name" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="Office Pool 2026"
+                       value="{{ contest.name if contest else '' }}">
+                <p class="text-sm text-gray-500 mt-1">Display name shown to users</p>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-6">
+                <label for="description" class="block text-gray-700 font-semibold mb-2">Description</label>
+                <textarea id="description" name="description" rows="3"
+                          class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="DTEC office competition">{{ contest.description if contest else '' }}</textarea>
+                <p class="text-sm text-gray-500 mt-1">Optional description shown on contest home page</p>
+            </div>
+
+            <!-- State -->
+            <div class="mb-6">
+                <label for="state" class="block text-gray-700 font-semibold mb-2">
+                    State <span class="text-red-500">*</span>
+                </label>
+                <select id="state" name="state" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="setup" {% if contest and contest.state == 'setup' %}selected{% endif %}>
+                        Setup - Admin configuring
+                    </option>
+                    <option value="open" {% if contest and contest.state == 'open' %}selected{% elif not contest %}selected{% endif %}>
+                        Open - Registration and drafting
+                    </option>
+                    <option value="locked" {% if contest and contest.state == 'locked' %}selected{% endif %}>
+                        Locked - Games in progress
+                    </option>
+                    <option value="complete" {% if contest and contest.state == 'complete' %}selected{% endif %}>
+                        Complete - Games finished
+                    </option>
+                </select>
+            </div>
+
+            <!-- Budget -->
+            <div class="mb-6">
+                <label for="budget" class="block text-gray-700 font-semibold mb-2">
+                    Budget <span class="text-red-500">*</span>
+                </label>
+                <input type="number" id="budget" name="budget" required min="1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="200"
+                       value="{{ contest.budget if contest else '200' }}">
+                <p class="text-sm text-gray-500 mt-1">Total points users can spend on countries</p>
+            </div>
+
+            <!-- Max Countries -->
+            <div class="mb-6">
+                <label for="max_countries" class="block text-gray-700 font-semibold mb-2">
+                    Max Countries <span class="text-red-500">*</span>
+                </label>
+                <input type="number" id="max_countries" name="max_countries" required min="1"
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="10"
+                       value="{{ contest.max_countries if contest else '10' }}">
+                <p class="text-sm text-gray-500 mt-1">Maximum number of countries each user can pick</p>
+            </div>
+
+            <!-- Deadline -->
+            <div class="mb-6">
+                <label for="deadline" class="block text-gray-700 font-semibold mb-2">
+                    Entry Deadline <span class="text-red-500">*</span>
+                </label>
+                <input type="datetime-local" id="deadline" name="deadline" required
+                       class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       value="{{ contest.deadline[:16] if contest else '' }}">
+                <p class="text-sm text-gray-500 mt-1">Last moment users can submit/edit their picks (UTC timezone)</p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                <a href="{{ url_for('global_admin_dashboard') }}" class="text-gray-600 hover:text-gray-800">
+                    ← Cancel
+                </a>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold">
+                    {% if contest %}Update Contest{% else %}Create Contest{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

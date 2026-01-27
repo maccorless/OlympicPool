@@ -6,7 +6,7 @@
 <div class="max-w-7xl mx-auto">
     <!-- Back to Dashboard -->
     <div class="mb-4">
-        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Dashboard
         </a>
     </div>
@@ -72,11 +72,11 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
-                                <a href="{{ url_for('team_detail', user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                                <a href="{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
                                     View Team
                                 </a>
                                 {% if u.id != user.id %}
-                                <form method="POST" action="{{ url_for('admin_user_delete', user_id=u.id) }}"
+                                <form method="POST" action="{{ url_for('admin_user_delete', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}"
                                       onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');">
                                     <button type="submit" class="text-red-600 hover:text-red-800 text-sm">
                                         Delete
@@ -111,11 +111,11 @@
                     <span>{{ u.pick_count }} picks • {{ u.created_at }}</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <a href="{{ url_for('team_detail', user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
+                    <a href="{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
                         View Team →
                     </a>
                     {% if u.id != user.id %}
-                    <form method="POST" action="{{ url_for('admin_user_delete', user_id=u.id) }}"
+                    <form method="POST" action="{{ url_for('admin_user_delete', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}"
                           onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');"
                           class="inline">
                         <button type="submit" class="text-red-600 hover:text-red-800 text-sm">

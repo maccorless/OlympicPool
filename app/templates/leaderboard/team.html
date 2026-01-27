@@ -6,7 +6,7 @@
 <div class="max-w-4xl mx-auto">
     <!-- Back to Leaderboard -->
     <div class="mb-4">
-        <a href="{{ url_for('leaderboard') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('leaderboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Leaderboard
         </a>
     </div>

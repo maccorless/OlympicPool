@@ -6,7 +6,7 @@
 <div class="max-w-4xl mx-auto">
     <!-- Back to Dashboard -->
     <div class="mb-4">
-        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+        <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">
             ← Back to Dashboard
         </a>
     </div>
@@ -19,7 +19,7 @@
 
     <!-- Contest Form -->
     <div class="bg-white shadow rounded-lg p-6">
-        <form method="POST" action="{{ url_for('admin_contest') }}">
+        <form method="POST" action="{{ url_for('admin_contest', event_slug=event.slug, contest_slug=contest.slug) }}">
             <!-- Name -->
             <div class="mb-6">
                 <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
@@ -82,7 +82,7 @@
 
             <!-- Submit -->
             <div class="flex items-center justify-between">
-                <a href="{{ url_for('admin_dashboard') }}" class="text-gray-600 hover:text-gray-900">
+                <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-gray-600 hover:text-gray-900">
                     Cancel
                 </a>
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">

@@ -182,7 +182,7 @@ window.draftPicker = function() {
     </div>
 
     <!-- Hidden form for submission -->
-    <form id="draft-form" method="POST" action="{{ url_for('submit_draft') }}" style="display: none;">
+    <form id="draft-form" method="POST" action="{{ url_for('submit_draft', event_slug=event.slug, contest_slug=contest.slug) }}" style="display: none;">
         <template x-for="code in selected" :key="code">
             <input type="hidden" name="countries[]" :value="code">
         </template>

@@ -19,19 +19,34 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center">
-                    <a href="/" id="logo" class="text-xl font-bold text-blue-600">🏅 Olympic Medal Pool</a>
+                    <a href="{{ url_for('contest_selector') }}" id="logo" class="text-xl font-bold text-blue-600">🏅 Olympic Medal Pool</a>
                 </div>
                 <div class="flex items-center space-x-4">
-                    {% if session.user_id %}
-                        <a href="/leaderboard" class="text-gray-700 hover:text-gray-900">Leaderboard</a>
-                        <a href="/my-picks" class="text-gray-700 hover:text-gray-900">My Picks</a>
-                        {% if user and user.email in config.ADMIN_EMAILS %}
-                            <a href="/admin" class="text-purple-700 hover:text-purple-900 font-semibold">Admin</a>
+                    {% if contest and event %}
+                        <!-- Contest-specific navigation -->
+                        <a href="{{ url_for('leaderboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-gray-700 hover:text-gray-900">Leaderboard</a>
+                        {% if session.user_id %}
+                            <a href="{{ url_for('my_picks', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-gray-700 hover:text-gray-900">My Picks</a>
+                            {% if user and user.email in config.ADMIN_EMAILS %}
+                                <a href="{{ url_for('admin_dashboard', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-purple-700 hover:text-purple-900 font-semibold">Contest Admin</a>
+                            {% endif %}
                         {% endif %}
-                        <a href="/logout" class="text-gray-700 hover:text-gray-900">Logout</a>
+                    {% endif %}
+
+                    <!-- Global Admin (visible everywhere for global admins) -->
+                    {% if session.user_id and user and user.email in config.GLOBAL_ADMIN_EMAILS %}
+                        <a href="{{ url_for('global_admin_dashboard') }}" class="text-red-700 hover:text-red-900 font-semibold">🌐 Global Admin</a>
+                    {% endif %}
+
+                    {% if session.user_id %}
+                        <a href="{{ url_for('logout') }}" class="text-gray-700 hover:text-gray-900">Logout</a>
                     {% else %}
-                        <a href="/login" class="text-gray-700 hover:text-gray-900">Login</a>
-                        <a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register</a>
+                        {% if contest and event %}
+                            <a href="{{ url_for('login', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-gray-700 hover:text-gray-900">Login</a>
+                            <a href="{{ url_for('register', event_slug=event.slug, contest_slug=contest.slug) }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Register</a>
+                        {% else %}
+                            <a href="{{ url_for('contest_selector') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">View Contests</a>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
