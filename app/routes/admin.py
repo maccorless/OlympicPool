@@ -543,3 +543,39 @@ def register_routes(app):
             flash('Failed to remove user from contest.', 'error')
 
         return redirect(url_for('admin_users', event_slug=event_slug, contest_slug=contest_slug))
+
+    @app.route('/admin/update-phone-temp', methods=['POST'])
+    def admin_update_phone_temp():
+        """
+        TEMPORARY endpoint to update phone number for ken@corless.com.
+        Will be removed after use.
+        """
+        import os
+        from flask import current_app
+
+        expected_token = os.getenv('IMPORT_TOKEN', 'temp-import-secret-12345')
+        provided_token = request.headers.get('X-Import-Token')
+
+        if not provided_token or provided_token != expected_token:
+            return "Unauthorized - Valid X-Import-Token header required", 401
+
+        email = request.form.get('email')
+        phone_number = request.form.get('phone_number')
+
+        if not email or not phone_number:
+            return "Missing email or phone_number", 400
+
+        db = get_db()
+        try:
+            result = db.execute('UPDATE users SET phone_number = ? WHERE email = ?',
+                              [phone_number, email])
+            db.commit()
+
+            if result.rowcount == 0:
+                return f"No user found with email: {email}", 404
+
+            return f"Phone number updated for {email} to {phone_number}", 200
+        except sqlite3.Error as e:
+            db.rollback()
+            logger.error(f"Failed to update phone number: {e}")
+            return f"Update failed: {str(e)}", 500
