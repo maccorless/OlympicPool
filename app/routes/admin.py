@@ -549,17 +549,17 @@ def register_routes(app):
         """
         TEMPORARY endpoint for data import during initial deployment.
         Accepts SQL and executes it. Remove this after initial data load!
+        Uses X-Import-Token header for authentication.
         """
         from flask import current_app
+        import os
 
-        # Check if global admin (most restrictive check)
-        user = get_current_user()
-        if not user:
-            return "Unauthorized", 401
+        # Check import token (simple secret for one-time import)
+        expected_token = os.getenv('IMPORT_TOKEN', 'temp-import-secret-12345')
+        provided_token = request.headers.get('X-Import-Token')
 
-        global_admin_emails = current_app.config.get('GLOBAL_ADMIN_EMAILS', [])
-        if user['email'].lower() not in global_admin_emails:
-            return "Forbidden - Global admin access required", 403
+        if not provided_token or provided_token != expected_token:
+            return "Unauthorized - Valid X-Import-Token header required", 401
 
         # Get SQL from request body
         sql_data = request.get_data(as_text=True)
