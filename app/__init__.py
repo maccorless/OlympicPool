@@ -45,6 +45,31 @@ def create_app(test_config=None):
     from app import db
     db.init_app(app)
 
+    # Add security headers
+    @app.after_request
+    def add_security_headers(response):
+        """Add Content Security Policy and other security headers."""
+        # CSP allows Alpine.js (requires unsafe-eval) and our CDN resources
+        csp_policy = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+            "https://cdn.tailwindcss.com https://unpkg.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+            "img-src 'self' data: https://flagcdn.com; "
+            "connect-src 'self'; "
+            "font-src 'self' data:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self';"
+        )
+        response.headers['Content-Security-Policy'] = csp_policy
+
+        # Additional security headers
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+
+        return response
+
     # Context processor to make user and config available in all templates
     @app.context_processor
     def inject_user():
