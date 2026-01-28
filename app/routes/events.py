@@ -107,7 +107,7 @@ def register_routes(app):
 
         # If not logged in, show landing page
         if not user:
-            return render_template('events/contest_landing.html',
+            return render_template('events/contest_landing_simple.html',
                                  contest=contest,
                                  event=event)
 
@@ -120,7 +120,7 @@ def register_routes(app):
 
         # Not registered - show landing page with option to register
         if not registered:
-            return render_template('events/contest_landing.html',
+            return render_template('events/contest_landing_simple.html',
                                  contest=contest,
                                  event=event)
 
@@ -129,7 +129,7 @@ def register_routes(app):
 
         if state == 'setup':
             # Contest not yet open - show landing page
-            return render_template('events/contest_landing.html',
+            return render_template('events/contest_landing_simple.html',
                                  contest=contest,
                                  event=event)
         elif state == 'open':
