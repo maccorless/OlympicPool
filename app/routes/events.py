@@ -88,21 +88,29 @@ def register_routes(app):
 
     @app.route('/<event_slug>/<contest_slug>')
     def contest_home(event_slug, contest_slug):
-        """Contest home page (redirects to appropriate page based on state)."""
+        """
+        Contest landing page.
+        - Shows landing page with contest info and how to play for non-authenticated users
+        - Redirects to appropriate page (draft/leaderboard) for registered users
+        """
         from app.decorators import require_contest_context
 
         # Manually load contest context (we're not using decorator here)
         from app.decorators import get_contest_from_url
-        contest = get_contest_from_url()
+        contest_data = get_contest_from_url()
 
-        if not contest:
+        if not contest_data:
             return redirect(url_for('contest_selector'))
 
+        contest = contest_data['contest']
+        event = contest_data['event']
         user = get_current_user()
 
-        # If not logged in, show register/login page
+        # If not logged in, show landing page
         if not user:
-            return redirect(url_for('login', event_slug=event_slug, contest_slug=contest_slug))
+            return render_template('events/contest_landing.html',
+                                 contest=contest,
+                                 event=event)
 
         # Check if user is registered for this contest
         db = get_db()
@@ -111,16 +119,20 @@ def register_routes(app):
             WHERE user_id = ? AND contest_id = ?
         ''', [user['id'], contest['id']]).fetchone()
 
+        # Not registered - show landing page with option to register
         if not registered:
-            # Redirect to registration
-            return redirect(url_for('register', event_slug=event_slug, contest_slug=contest_slug))
+            return render_template('events/contest_landing.html',
+                                 contest=contest,
+                                 event=event)
 
         # Registered user - show appropriate page based on contest state
         state = contest['state']
 
         if state == 'setup':
-            # Contest not yet open
-            return render_template('index.html', contest=contest, event=contest['event'])
+            # Contest not yet open - show landing page
+            return render_template('events/contest_landing.html',
+                                 contest=contest,
+                                 event=event)
         elif state == 'open':
             # Redirect to draft picker
             return redirect(url_for('draft', event_slug=event_slug, contest_slug=contest_slug))
