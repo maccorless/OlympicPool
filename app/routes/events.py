@@ -97,13 +97,12 @@ def register_routes(app):
 
         # Manually load contest context (we're not using decorator here)
         from app.decorators import get_contest_from_url
-        contest_data = get_contest_from_url()
+        contest = get_contest_from_url()
 
-        if not contest_data:
+        if not contest:
             return redirect(url_for('contest_selector'))
 
-        contest = contest_data['contest']
-        event = contest_data['event']
+        event = contest['event']
         user = get_current_user()
 
         # If not logged in, show landing page
