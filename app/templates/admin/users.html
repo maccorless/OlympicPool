@@ -75,6 +75,9 @@
                                 <a href="{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
                                     View Team
                                 </a>
+                                <a href="{{ url_for('admin_edit_user', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-green-600 hover:text-green-800 text-sm">
+                                    Edit
+                                </a>
                                 {% if u.id != user.id %}
                                 <form method="POST" action="{{ url_for('admin_user_delete', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}"
                                       onsubmit="return confirm('Are you sure you want to delete {{ u.name }} ({{ u.email }})? This will also delete their picks and cannot be undone.');">
@@ -113,6 +116,9 @@
                 <div class="flex items-center gap-3">
                     <a href="{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-blue-600 hover:text-blue-800 text-sm">
                         View Team →
+                    </a>
+                    <a href="{{ url_for('admin_edit_user', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}" class="text-green-600 hover:text-green-800 text-sm">
+                        Edit
                     </a>
                     {% if u.id != user.id %}
                     <form method="POST" action="{{ url_for('admin_user_delete', event_slug=event.slug, contest_slug=contest.slug, user_id=u.id) }}"

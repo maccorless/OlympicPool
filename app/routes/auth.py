@@ -306,6 +306,43 @@ def register_routes(app):
 
         return render_template('auth/login_verify.html', phone=phone)
 
+    @app.route('/<event_slug>/<contest_slug>/profile/edit', methods=['GET', 'POST'])
+    @require_contest_context
+    def edit_profile(event_slug, contest_slug):
+        """Allow user to edit their name and team name."""
+        from app.decorators import get_current_user, login_required
+
+        user = get_current_user()
+        if not user:
+            flash('Please log in to edit your profile.', 'error')
+            return redirect(url_for('login', event_slug=event_slug, contest_slug=contest_slug))
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            team_name = request.form.get('team_name', '').strip()
+
+            if not name or not team_name:
+                flash('Name and team name are required.', 'error')
+                return render_template('auth/edit_profile.html', user=user)
+
+            db = get_db()
+            try:
+                db.execute('''
+                    UPDATE users
+                    SET name = ?, team_name = ?
+                    WHERE id = ?
+                ''', [name, team_name, user['id']])
+                db.commit()
+
+                flash('Profile updated successfully!', 'success')
+                return redirect(url_for('my_picks', event_slug=event_slug, contest_slug=contest_slug))
+            except sqlite3.Error as e:
+                db.rollback()
+                logger.error(f"Failed to update profile for user {user['id']}: {e}")
+                flash('Failed to update profile. Please try again.', 'error')
+
+        return render_template('auth/edit_profile.html', user=user)
+
     @app.route('/logout')
     def logout():
         """Clear session and log out."""

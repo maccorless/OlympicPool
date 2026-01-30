@@ -543,3 +543,49 @@ def register_routes(app):
             flash('Failed to remove user from contest.', 'error')
 
         return redirect(url_for('admin_users', event_slug=event_slug, contest_slug=contest_slug))
+
+    @app.route('/<event_slug>/<contest_slug>/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+    @admin_required
+    @require_contest_context
+    def admin_edit_user(event_slug, contest_slug, user_id):
+        """Admin page to edit user name and team name."""
+        db = get_db()
+        current = get_current_user()
+
+        # Get user to edit
+        edit_user = db.execute('''
+            SELECT u.id, u.email, u.phone_number, u.name, u.team_name
+            FROM users u
+            JOIN user_contest_info uci ON u.id = uci.user_id
+            WHERE u.id = ? AND uci.contest_id = ?
+        ''', [user_id, g.contest['id']]).fetchone()
+
+        if not edit_user:
+            flash('User not found in this contest.', 'error')
+            return redirect(url_for('admin_users', event_slug=event_slug, contest_slug=contest_slug))
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            team_name = request.form.get('team_name', '').strip()
+
+            if not name or not team_name:
+                flash('Name and team name are required.', 'error')
+                return render_template('admin/edit_user.html', edit_user=edit_user)
+
+            try:
+                db.execute('''
+                    UPDATE users
+                    SET name = ?, team_name = ?
+                    WHERE id = ?
+                ''', [name, team_name, user_id])
+                db.commit()
+
+                logger.info(f"User updated by admin {current['email']}: user_id={user_id} name={name} team_name={team_name}")
+                flash(f'User {name} updated successfully!', 'success')
+                return redirect(url_for('admin_users', event_slug=event_slug, contest_slug=contest_slug))
+            except sqlite3.Error as e:
+                db.rollback()
+                logger.error(f"Failed to update user {user_id}: {e}")
+                flash('Failed to update user. Please try again.', 'error')
+
+        return render_template('admin/edit_user.html', edit_user=edit_user)
