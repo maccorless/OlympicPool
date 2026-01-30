@@ -310,7 +310,7 @@ def register_routes(app):
     @require_contest_context
     def edit_profile(event_slug, contest_slug):
         """Allow user to edit their name and team name."""
-        from app.decorators import get_current_user, login_required
+        from app.decorators import get_current_user
 
         user = get_current_user()
         if not user:
