@@ -15,6 +15,7 @@ window.pickerData = {
 window.draftPicker = function() {
     return {
         selected: window.pickerData.selected || [],
+        initialSelected: [...(window.pickerData.selected || [])], // Store copy of initial state
         budget: window.pickerData.budget,
         maxCountries: window.pickerData.maxCountries,
         countries: window.pickerData.countries,
@@ -69,13 +70,24 @@ window.draftPicker = function() {
             }
         },
 
+        hasUnsavedChanges() {
+            // Check if selections differ from initial state
+            if (this.selected.length !== this.initialSelected.length) {
+                return true;
+            }
+            // Check if same countries (order doesn't matter)
+            const sortedSelected = [...this.selected].sort();
+            const sortedInitial = [...this.initialSelected].sort();
+            return !sortedSelected.every((code, i) => code === sortedInitial[i]);
+        },
+
         warnIfUnsaved(event) {
             // Don't warn if we're submitting the form
             if (this.isSubmitting) {
                 return;
             }
-            // Warn if user has unsaved selections and tries to leave
-            if (this.selected.length > 0) {
+            // Warn only if there are unsaved changes
+            if (this.hasUnsavedChanges()) {
                 event.preventDefault();
                 event.returnValue = '';
             }
