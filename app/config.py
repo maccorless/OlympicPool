@@ -43,3 +43,9 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # Use Railway volume path if available, otherwise local instance folder
 DATABASE_DIR = os.getenv('DATABASE_DIR', os.path.join(os.path.dirname(__file__), '..', 'instance'))
 DATABASE = os.path.join(DATABASE_DIR, 'medal_pool.db')
+
+# Medal data auto-update
+# How long (in seconds) before medal data is considered stale and needs refresh
+# Default: 900 seconds (15 minutes) - suitable for production Olympics use
+# For local testing, set MEDAL_STALENESS_SECONDS=10 in .env
+MEDAL_STALENESS_SECONDS = int(os.getenv('MEDAL_STALENESS_SECONDS', '900'))

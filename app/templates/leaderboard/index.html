@@ -38,9 +38,51 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-2 sm:px-4">
+    {% if scrape_in_progress %}
+    <script>
+        // Auto-refresh when scrape completes
+        (function() {
+            let attempts = 0;
+            const maxAttempts = 10; // Poll for up to 30 seconds
+            const pollInterval = 3000; // 3 seconds
+
+            function checkScrapeStatus() {
+                attempts++;
+
+                fetch('{{ url_for("scrape_status", event_slug=event.slug, contest_slug=contest.slug) }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.scrape_in_progress) {
+                            // Scrape completed! Reload page to show fresh data
+                            clearInterval(pollTimer);
+                            location.reload();
+                        } else if (attempts >= maxAttempts) {
+                            // Stop polling after max attempts
+                            clearInterval(pollTimer);
+                        }
+                    })
+                    .catch(error => {
+                        clearInterval(pollTimer);
+                    });
+            }
+
+            // Start polling
+            const pollTimer = setInterval(checkScrapeStatus, pollInterval);
+        })();
+    </script>
+    {% endif %}
+
     <!-- Header -->
     <div class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">Leaderboard</h1>
+        <div class="flex items-center justify-between mb-2">
+            <h1 class="text-2xl sm:text-4xl font-bold text-gray-900">Leaderboard</h1>
+            {% if contest_state in ['locked', 'complete'] %}
+            <a href="{{ url_for('medal_table', event_slug=event.slug, contest_slug=contest.slug) }}"
+               class="text-sm sm:text-base bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded text-gray-700 font-medium">
+                Medal Table →
+            </a>
+            {% endif %}
+        </div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <p class="text-sm sm:text-base text-gray-600">
                 XXV Winter Olympic Games Medal Pool
@@ -50,7 +92,10 @@
             </p>
             {% if last_updated and contest_state in ['locked', 'complete'] %}
             <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-0">
-                Last updated: <span class="font-medium">{{ last_updated }}</span>
+                Last updated: <span class="font-medium {% if data_has_changes %}text-green-600{% endif %}">{{ last_updated }}</span>
+                {% if scrape_in_progress %}
+                    <span class="text-blue-600">🔄 Checking for new data...</span>
+                {% endif %}
             </p>
             {% endif %}
         </div>

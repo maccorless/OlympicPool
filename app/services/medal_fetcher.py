@@ -6,9 +6,11 @@ Scrapes Olympic medal data from Wikipedia and updates the database.
 
 import logging
 import requests
+import threading
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Tuple
 from bs4 import BeautifulSoup
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +202,7 @@ def map_country_name_to_code(country_name: str, db, event_id: int) -> Optional[s
     return None
 
 
-def update_medals_in_database(db, event_id: int, medal_data: List[Dict]) -> Tuple[int, List[str]]:
+def update_medals_in_database(db, event_id: int, medal_data: List[Dict]) -> Tuple[int, List[str], bool]:
     """
     Update medals table with fetched data.
 
@@ -211,10 +213,14 @@ def update_medals_in_database(db, event_id: int, medal_data: List[Dict]) -> Tupl
                     {country_name, gold, silver, bronze} (Wikipedia format)
 
     Returns:
-        Tuple of (updated_count, unmatched_countries)
+        Tuple of (updated_count, unmatched_countries, data_changed)
+        - updated_count: Number of countries updated
+        - unmatched_countries: List of countries that couldn't be mapped
+        - data_changed: True if any medal counts actually changed
     """
     updated_count = 0
     unmatched_countries = []
+    data_changed = False
 
     try:
         db.execute('BEGIN')
@@ -245,6 +251,25 @@ def update_medals_in_database(db, event_id: int, medal_data: List[Dict]) -> Tupl
             bronze = entry['bronze']
             points = gold * 3 + silver * 2 + bronze
 
+            # Check if data actually changed
+            existing = db.execute('''
+                SELECT gold, silver, bronze FROM medals
+                WHERE event_id = ? AND country_code = ?
+            ''', [event_id, country_code]).fetchone()
+
+            if existing:
+                # Compare with existing data
+                if (existing['gold'] != gold or
+                    existing['silver'] != silver or
+                    existing['bronze'] != bronze):
+                    data_changed = True
+                    logger.info(f"Medal data changed for {country_code}: {existing['gold']}/{existing['silver']}/{existing['bronze']} → {gold}/{silver}/{bronze}")
+            else:
+                # New country with medals - this is a change
+                if gold > 0 or silver > 0 or bronze > 0:
+                    data_changed = True
+                    logger.info(f"New medals for {country_code}: {gold}/{silver}/{bronze}")
+
             # Update or insert medal data
             db.execute('''
                 INSERT INTO medals (event_id, country_code, gold, silver, bronze, points, updated_at)
@@ -268,9 +293,9 @@ def update_medals_in_database(db, event_id: int, medal_data: List[Dict]) -> Tupl
             updated_count += 1
 
         db.commit()
-        logger.info(f"Updated medals for {updated_count} countries")
+        logger.info(f"Updated medals for {updated_count} countries, data_changed={data_changed}")
 
-        return updated_count, unmatched_countries
+        return updated_count, unmatched_countries, data_changed
 
     except Exception as e:
         db.rollback()
@@ -295,7 +320,7 @@ def scrape_wikipedia_and_update_medals(db, event_id: int, wikipedia_url: str) ->
         medal_data, metadata = scrape_wikipedia_medals(wikipedia_url)
 
         # Update database
-        updated_count, unmatched_countries = update_medals_in_database(db, event_id, medal_data)
+        updated_count, unmatched_countries, data_changed = update_medals_in_database(db, event_id, medal_data)
 
         # Store metadata in system_meta
         meta_key = f'medals_last_scrape_{event_id}'
@@ -305,7 +330,8 @@ def scrape_wikipedia_and_update_medals(db, event_id: int, wikipedia_url: str) ->
             'success': True,
             'countries_fetched': metadata['countries_fetched'],
             'countries_updated': updated_count,
-            'unmatched_countries': unmatched_countries
+            'unmatched_countries': unmatched_countries,
+            'data_changed': data_changed
         }
 
         import json
@@ -322,6 +348,7 @@ def scrape_wikipedia_and_update_medals(db, event_id: int, wikipedia_url: str) ->
             'success': True,
             'updated_count': updated_count,
             'unmatched_countries': unmatched_countries,
+            'data_changed': data_changed,
             'metadata': metadata
         }
 
@@ -374,3 +401,153 @@ def get_last_scrape_metadata(db, event_id: int) -> Optional[Dict]:
 
     import json
     return json.loads(row['value'])
+
+
+def is_medal_data_stale(db, event_id: int, staleness_seconds: int = 900) -> Tuple[bool, Optional[datetime]]:
+    """
+    Check if medal data is stale (needs refresh).
+
+    Args:
+        db: Database connection
+        event_id: Event ID to check
+        staleness_seconds: Consider stale if older than this many seconds (default: 900 = 15 minutes)
+
+    Returns:
+        Tuple of (is_stale, last_updated_datetime)
+        - is_stale: True if data is older than staleness_seconds
+        - last_updated_datetime: When medals were last updated (None if never updated)
+    """
+    # Get last update timestamp from medals table
+    result = db.execute('''
+        SELECT MAX(updated_at) as last_updated
+        FROM medals
+        WHERE event_id = ?
+    ''', [event_id]).fetchone()
+
+    if not result or not result['last_updated']:
+        # No medal data exists - definitely stale
+        return True, None
+
+    # Parse ISO8601 timestamp
+    last_updated_str = result['last_updated']
+
+    # Handle different timestamp formats from SQLite
+    if last_updated_str.endswith('Z'):
+        last_updated = datetime.fromisoformat(last_updated_str.replace('Z', '+00:00'))
+    elif '+' in last_updated_str or last_updated_str.count(':') > 2:
+        # Already has timezone info
+        last_updated = datetime.fromisoformat(last_updated_str)
+    else:
+        # Naive datetime from SQLite - assume UTC
+        last_updated = datetime.fromisoformat(last_updated_str).replace(tzinfo=timezone.utc)
+
+    # Calculate time difference
+    now = datetime.now(timezone.utc)
+    seconds_since_update = (now - last_updated).total_seconds()
+
+    is_stale = seconds_since_update > staleness_seconds
+
+    return is_stale, last_updated
+
+
+def trigger_background_medal_scrape(app, event_id: int, wikipedia_url: str):
+    """
+    Trigger medal scrape in background thread (non-blocking).
+
+    Args:
+        app: Flask application instance
+        event_id: Event ID to update
+        wikipedia_url: Wikipedia URL to scrape
+
+    Note: Creates new database connection inside thread to avoid sharing connections across threads.
+    """
+    def scrape_task():
+        try:
+            # Import db getter inside thread
+            from app.db import get_db
+
+            # Push application context for this thread
+            with app.app_context():
+                # Check scrape lock to prevent concurrent scrapes
+                db = get_db()
+                scrape_lock_key = f'medal_scrape_in_progress_{event_id}'
+                scrape_lock = db.execute('''
+                    SELECT value FROM system_meta WHERE key = ?
+                ''', [scrape_lock_key]).fetchone()
+
+                if scrape_lock and scrape_lock['value'] == 'true':
+                    logger.info(f"Scrape already in progress for event {event_id}, skipping")
+                    return
+
+                # Set lock
+                db.execute('''
+                    INSERT INTO system_meta (key, value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                    ON CONFLICT(key) DO UPDATE SET
+                        value = excluded.value,
+                        updated_at = CURRENT_TIMESTAMP
+                ''', [scrape_lock_key, 'true'])
+                db.commit()
+
+                try:
+                    # Perform scrape
+                    scrape_wikipedia_and_update_medals(db, event_id, wikipedia_url)
+                    logger.info(f"Background medal scrape completed for event {event_id}")
+                except Exception as scrape_error:
+                    logger.error(f"Scrape error for event {event_id}: {scrape_error}")
+                finally:
+                    # Clear lock (always, even on error)
+                    db.execute('''
+                        UPDATE system_meta SET value = 'false' WHERE key = ?
+                    ''', [scrape_lock_key])
+                    db.commit()
+
+        except Exception as e:
+            logger.error(f"Background thread failed for event {event_id}: {e}")
+
+    # Start scrape in background thread
+    logger.info(f"Triggering background medal scrape for event {event_id}")
+    thread = threading.Thread(target=scrape_task, daemon=True)
+    thread.start()
+
+
+def format_timestamp_cet(utc_timestamp_str: Optional[str]) -> Optional[str]:
+    """
+    Convert UTC ISO8601 timestamp to CET/CEST human-readable format.
+
+    Args:
+        utc_timestamp_str: ISO8601 UTC timestamp string
+
+    Returns:
+        Formatted string like "Feb 8, 2026 3:45 PM CET" or None
+    """
+    if not utc_timestamp_str:
+        return None
+
+    try:
+        # Parse UTC timestamp
+        if utc_timestamp_str.endswith('Z'):
+            utc_time = datetime.fromisoformat(utc_timestamp_str.replace('Z', '+00:00'))
+        elif '+' in utc_timestamp_str or utc_timestamp_str.count(':') > 2:
+            # Already has timezone info
+            utc_time = datetime.fromisoformat(utc_timestamp_str)
+        else:
+            # Naive datetime - assume UTC
+            utc_time = datetime.fromisoformat(utc_timestamp_str).replace(tzinfo=timezone.utc)
+
+        # Convert to Europe/Rome timezone (handles CET/CEST automatically)
+        milan_tz = ZoneInfo('Europe/Rome')
+        milan_time = utc_time.astimezone(milan_tz)
+
+        # Format: "Feb 8, 2026 3:45 PM CET"
+        # Note: %-d and %-I are Unix format codes (no padding), %#d and %#I for Windows
+        try:
+            formatted = milan_time.strftime('%b %-d, %Y %-I:%M %p %Z')
+        except ValueError:
+            # Windows doesn't support -, try # instead
+            formatted = milan_time.strftime('%b %#d, %Y %#I:%M %p %Z')
+
+        return formatted
+    except Exception as e:
+        logger.warning(f"Failed to convert timestamp to CET: {e}")
+        return utc_timestamp_str  # Fallback to original

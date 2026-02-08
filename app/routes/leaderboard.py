@@ -2,9 +2,14 @@
 Leaderboard routes: public leaderboard and team detail views.
 """
 import logging
-from flask import render_template, abort, request, g
+from flask import render_template, abort, request, g, flash, current_app, jsonify
 from app.db import get_db
 from app.decorators import get_current_user, require_contest_context
+from app.services.medal_fetcher import (
+    is_medal_data_stale,
+    trigger_background_medal_scrape,
+    format_timestamp_cet
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +30,40 @@ def register_routes(app):
         # Only show leaderboard in open, locked, or complete states (not setup)
         if contest_state == 'setup':
             abort(404)
+
+        # Check if medal data is stale (only for locked/complete states)
+        is_stale = False
+        scrape_in_progress = False
+
+        if contest_state in ['locked', 'complete']:
+            wikipedia_url = g.event.get('wikipedia_medal_url')
+
+            if wikipedia_url:
+                # Check if a scrape is already in progress
+                scrape_lock_key = f'medal_scrape_in_progress_{g.contest["event_id"]}'
+                scrape_lock = db.execute('''
+                    SELECT value FROM system_meta WHERE key = ?
+                ''', [scrape_lock_key]).fetchone()
+
+                if scrape_lock:
+                    lock_value = scrape_lock['value']
+                    scrape_in_progress = (lock_value == 'true')
+                else:
+                    scrape_in_progress = False
+
+                # Check staleness
+                staleness_threshold = current_app.config.get('MEDAL_STALENESS_SECONDS', 900)
+                is_stale, last_updated_datetime = is_medal_data_stale(
+                    db,
+                    g.contest['event_id'],
+                    staleness_seconds=staleness_threshold
+                )
+
+                # If stale and not already scraping, trigger background scrape
+                if is_stale and not scrape_in_progress:
+                    # Pass the actual Flask app instance (not the proxy) to the background thread
+                    trigger_background_medal_scrape(current_app._get_current_object(), g.contest['event_id'], wikipedia_url)
+                    scrape_in_progress = True  # We just started it
 
         # Get sort parameters (default: points DESC)
         sort_by = request.args.get('sort', 'points')
@@ -159,12 +198,40 @@ def register_routes(app):
             SELECT MAX(updated_at) as last_updated FROM medals WHERE event_id = ?
         ''', [g.contest['event_id']]).fetchone()
 
+        # Convert UTC timestamp to CET for display
+        last_updated_utc = last_update['last_updated'] if last_update else None
+        last_updated_cet = format_timestamp_cet(last_updated_utc)
+
+        # Check if data actually changed in last scrape (show green timestamp)
+        data_has_changes = False
+        if contest_state in ['locked', 'complete']:
+            from app.services.medal_fetcher import get_last_scrape_metadata
+            scrape_meta = get_last_scrape_metadata(db, g.contest['event_id'])
+
+            if scrape_meta and scrape_meta.get('data_changed'):
+                # Data changed - check if it was recent (within 30 seconds)
+                from datetime import datetime, timezone
+                scrape_time_str = scrape_meta.get('timestamp')
+                if scrape_time_str:
+                    if scrape_time_str.endswith('Z'):
+                        scrape_time = datetime.fromisoformat(scrape_time_str.replace('Z', '+00:00'))
+                    elif '+' in scrape_time_str:
+                        scrape_time = datetime.fromisoformat(scrape_time_str)
+                    else:
+                        scrape_time = datetime.fromisoformat(scrape_time_str).replace(tzinfo=timezone.utc)
+
+                    seconds_since_scrape = (datetime.now(timezone.utc) - scrape_time).total_seconds()
+                    # Show green timestamp if data changed within last 30 seconds
+                    data_has_changes = seconds_since_scrape <= 30
+
         return render_template('leaderboard/index.html',
                              teams=teams_list,
                              contest_state=contest_state,
                              sort_by=sort_by,
                              sort_order=sort_order,
-                             last_updated=last_update['last_updated'] if last_update else None,
+                             last_updated=last_updated_cet,
+                             scrape_in_progress=scrape_in_progress,
+                             data_has_changes=data_has_changes,
                              current_user_id=current_user['id'] if current_user else None)
 
     @app.route('/<event_slug>/<contest_slug>/team/<int:user_id>')
@@ -223,4 +290,99 @@ def register_routes(app):
                              total_bronze=total_bronze,
                              total_points=total_points,
                              budget=budget,
+                             contest_state=contest_state)
+
+    @app.route('/<event_slug>/<contest_slug>/api/scrape-status')
+    @require_contest_context
+    def scrape_status(event_slug, contest_slug):
+        """API endpoint to check if medal scrape is in progress."""
+        db = get_db()
+
+        # Check scrape lock
+        scrape_lock_key = f'medal_scrape_in_progress_{g.contest["event_id"]}'
+        scrape_lock = db.execute('''
+            SELECT value FROM system_meta WHERE key = ?
+        ''', [scrape_lock_key]).fetchone()
+
+        scrape_in_progress = scrape_lock and scrape_lock['value'] == 'true'
+
+        # Get last updated timestamp
+        last_update = db.execute('''
+            SELECT MAX(updated_at) as last_updated FROM medals WHERE event_id = ?
+        ''', [g.contest['event_id']]).fetchone()
+
+        return jsonify({
+            'scrape_in_progress': scrape_in_progress,
+            'last_updated': last_update['last_updated'] if last_update else None
+        })
+
+    @app.route('/<event_slug>/<contest_slug>/medals')
+    @require_contest_context
+    def medal_table(event_slug, contest_slug):
+        """Official medal table showing all countries with their medals and efficiency."""
+        db = get_db()
+
+        contest_state = g.contest['state']
+
+        # Only show medal table in locked or complete states (has medal data)
+        if contest_state not in ['locked', 'complete']:
+            abort(404)
+
+        # Get sort parameters (default: points DESC)
+        sort_by = request.args.get('sort', 'points')
+        sort_order = request.args.get('order', 'desc')
+
+        # Validate sort parameters
+        valid_sorts = ['points', 'gold', 'silver', 'bronze', 'efficiency', 'country']
+        if sort_by not in valid_sorts:
+            sort_by = 'points'
+        if sort_order not in ('asc', 'desc'):
+            sort_order = 'desc'
+
+        # Build ORDER BY clause
+        if sort_by == 'efficiency':
+            # Sort by points/cost ratio
+            order_clause = f'efficiency {sort_order.upper()}, m.points DESC'
+        elif sort_by == 'country':
+            order_clause = f'c.name {sort_order.upper()}'
+        else:
+            # Sort by medal counts
+            order_clause = f'm.{sort_by} {sort_order.upper()}, c.name ASC'
+
+        # Get all countries with medal data and efficiency
+        countries = db.execute(f'''
+            SELECT
+                c.code,
+                c.iso_code,
+                c.name,
+                c.cost,
+                COALESCE(m.gold, 0) as gold,
+                COALESCE(m.silver, 0) as silver,
+                COALESCE(m.bronze, 0) as bronze,
+                COALESCE(m.points, 0) as points,
+                CASE
+                    WHEN c.cost > 0 THEN ROUND(CAST(COALESCE(m.points, 0) AS FLOAT) / c.cost, 2)
+                    ELSE 0
+                END as efficiency
+            FROM countries c
+            LEFT JOIN medals m ON c.code = m.country_code AND m.event_id = c.event_id
+            WHERE c.event_id = ? AND c.is_active = 1
+            ORDER BY {order_clause}
+        ''', [g.contest['event_id']]).fetchall()
+
+        # Filter out countries with 0 medals
+        countries_with_medals = [dict(c) for c in countries if c['gold'] > 0 or c['silver'] > 0 or c['bronze'] > 0]
+
+        # Get last updated timestamp
+        last_update = db.execute('''
+            SELECT MAX(updated_at) as last_updated FROM medals WHERE event_id = ?
+        ''', [g.contest['event_id']]).fetchone()
+
+        last_updated_cet = format_timestamp_cet(last_update['last_updated'] if last_update else None)
+
+        return render_template('leaderboard/medals.html',
+                             countries=countries_with_medals,
+                             sort_by=sort_by,
+                             sort_order=sort_order,
+                             last_updated=last_updated_cet,
                              contest_state=contest_state)
