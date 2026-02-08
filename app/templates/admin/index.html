@@ -91,6 +91,45 @@
         </div>
     </div>
 
+    <!-- Medal Data Status -->
+    {% if wikipedia_configured %}
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4">Medal Data Status</h2>
+        {% if scrape_metadata %}
+            {% if scrape_metadata.success %}
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <span class="text-green-600 font-semibold mr-2">✓</span>
+                        <span class="text-gray-900">Last update: {{ scrape_metadata.timestamp[:19].replace('T', ' ') }} UTC</span>
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        Source: Wikipedia • {{ scrape_metadata.countries_updated }} countries updated
+                    </div>
+                    {% if scrape_metadata.unmatched_countries and scrape_metadata.unmatched_countries|length > 0 %}
+                    <div class="text-sm text-orange-600 mt-2">
+                        ⚠️ {{ scrape_metadata.unmatched_countries|length }} unmatched countries
+                    </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="space-y-2">
+                    <div class="flex items-center">
+                        <span class="text-red-600 font-semibold mr-2">✗</span>
+                        <span class="text-gray-900">Last attempt: {{ scrape_metadata.timestamp[:19].replace('T', ' ') }} UTC</span>
+                    </div>
+                    <div class="text-sm text-red-600">
+                        Error: {{ scrape_metadata.error }}
+                    </div>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="text-gray-600">
+                Wikipedia scraping not yet run. <a href="{{ url_for('admin_medals', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">Go to Medal Entry →</a>
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Quick Actions -->
     <div class="bg-white shadow rounded-lg p-6">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>

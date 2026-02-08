@@ -42,12 +42,19 @@ def register_routes(app):
             WHERE event_id = ? AND (gold > 0 OR silver > 0 OR bronze > 0)
         ''', [g.contest['event_id']]).fetchone()['count']
 
+        # Get last scrape metadata for medal status
+        from app.services.medal_fetcher import get_last_scrape_metadata
+        scrape_metadata = get_last_scrape_metadata(db, g.contest['event_id'])
+        wikipedia_configured = bool(g.event.get('wikipedia_medal_url'))
+
         return render_template('admin/index.html',
                              user=user,
                              total_users=total_users,
                              users_with_picks=users_with_picks,
                              total_countries=total_countries,
-                             total_medals_entered=total_medals_entered)
+                             total_medals_entered=total_medals_entered,
+                             scrape_metadata=scrape_metadata,
+                             wikipedia_configured=wikipedia_configured)
 
     @app.route('/<event_slug>/<contest_slug>/admin/contest', methods=['GET', 'POST'])
     @admin_required
@@ -328,11 +335,20 @@ def register_routes(app):
             ORDER BY {order_clause}
         ''', [g.contest['event_id']]).fetchall()
 
+        # Get last scrape metadata
+        from app.services.medal_fetcher import get_last_scrape_metadata
+        scrape_metadata = get_last_scrape_metadata(db, g.contest['event_id'])
+
+        # Check if Wikipedia scraping is configured
+        wikipedia_configured = bool(g.event.get('wikipedia_medal_url'))
+
         return render_template('admin/medals.html',
                              user=user,
                              countries=countries,
                              sort_by=sort_by,
-                             sort_order=sort_order)
+                             sort_order=sort_order,
+                             scrape_metadata=scrape_metadata,
+                             wikipedia_configured=wikipedia_configured)
 
     @app.route('/<event_slug>/<contest_slug>/admin/medals/bulk', methods=['GET', 'POST'])
     @admin_required
@@ -477,6 +493,41 @@ def register_routes(app):
 
         # GET request - show form
         return render_template('admin/medals_bulk.html', user=user)
+
+    @app.route('/<event_slug>/<contest_slug>/admin/medals/scrape-wikipedia', methods=['POST'])
+    @admin_required
+    @require_contest_context
+    def admin_medals_scrape_wikipedia(event_slug, contest_slug):
+        """Scrape and update medals from Wikipedia."""
+        from app.services.medal_fetcher import scrape_wikipedia_and_update_medals
+
+        db = get_db()
+        user = get_current_user()
+
+        # Get Wikipedia URL from event
+        wikipedia_medal_url = g.event.get('wikipedia_medal_url')
+        if not wikipedia_medal_url:
+            flash('Wikipedia URL not configured for this event.', 'error')
+            return redirect(url_for('admin_medals', event_slug=event_slug, contest_slug=contest_slug))
+
+        logger.info(f"Admin {user['email']} initiated Wikipedia scrape from {wikipedia_medal_url}")
+
+        # Scrape and update medals
+        result = scrape_wikipedia_and_update_medals(db, g.contest['event_id'], wikipedia_medal_url)
+
+        if result['success']:
+            updated_count = result['updated_count']
+            unmatched = result.get('unmatched_countries', [])
+
+            if unmatched:
+                flash(f'Updated {updated_count} countries from Wikipedia. Warning: {len(unmatched)} countries not matched: {", ".join(unmatched[:5])}{"..." if len(unmatched) > 5 else ""}', 'warning')
+            else:
+                flash(f'Successfully updated medal counts for {updated_count} countries from Wikipedia!', 'success')
+        else:
+            error = result.get('error', 'Unknown error')
+            flash(f'Failed to scrape Wikipedia: {error}', 'error')
+
+        return redirect(url_for('admin_medals', event_slug=event_slug, contest_slug=contest_slug))
 
     @app.route('/<event_slug>/<contest_slug>/admin/users')
     @admin_required
