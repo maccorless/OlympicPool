@@ -37,7 +37,7 @@ def register_routes(app):
 
             # Get Wikipedia URL from contest table
             contest_full = db.execute('SELECT wikipedia_medal_url FROM contest WHERE id = 1').fetchone()
-            wikipedia_url = contest_full.get('wikipedia_medal_url') if contest_full else None
+            wikipedia_url = contest_full['wikipedia_medal_url'] if contest_full else None
 
             if wikipedia_url:
                 # Check if scrape already in progress

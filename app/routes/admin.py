@@ -486,7 +486,7 @@ def register_routes(app):
 
         # Get Wikipedia URL from contest table
         contest = db.execute('SELECT wikipedia_medal_url FROM contest WHERE id = 1').fetchone()
-        wikipedia_medal_url = contest.get('wikipedia_medal_url') if contest else None
+        wikipedia_medal_url = contest['wikipedia_medal_url'] if contest else None
 
         if not wikipedia_medal_url:
             flash('Wikipedia URL not configured for this contest.', 'error')
