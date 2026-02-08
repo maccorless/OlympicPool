@@ -9,6 +9,7 @@ from io import StringIO
 from flask import render_template, request, redirect, url_for, flash
 from app.db import get_db
 from app.decorators import admin_required, get_current_user
+from app.services.medal_fetcher import get_last_scrape_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -316,11 +317,20 @@ def register_routes(app):
             ORDER BY {order_clause}
         ''').fetchall()
 
+        # Get scrape metadata for status display
+        scrape_metadata = get_last_scrape_metadata(db)
+
+        # Check if Wikipedia URL is configured
+        contest = db.execute('SELECT wikipedia_medal_url FROM contest WHERE id = 1').fetchone()
+        wikipedia_configured = bool(contest and contest['wikipedia_medal_url'])
+
         return render_template('admin/medals.html',
                              user=user,
                              countries=countries,
                              sort_by=sort_by,
-                             sort_order=sort_order)
+                             sort_order=sort_order,
+                             scrape_metadata=scrape_metadata,
+                             wikipedia_configured=wikipedia_configured)
 
     @app.route('/admin/medals/bulk', methods=['GET', 'POST'])
     @admin_required
@@ -464,6 +474,45 @@ def register_routes(app):
 
         # GET request - show form
         return render_template('admin/medals_bulk.html', user=user)
+
+    @app.route('/admin/medals/scrape-wikipedia', methods=['POST'])
+    @admin_required
+    def admin_medals_scrape_wikipedia():
+        """Manually trigger Wikipedia medal scrape."""
+        from app.services.medal_fetcher import scrape_wikipedia_and_update_medals
+
+        db = get_db()
+        user = get_current_user()
+
+        # Get Wikipedia URL from contest table
+        contest = db.execute('SELECT wikipedia_medal_url FROM contest WHERE id = 1').fetchone()
+        wikipedia_medal_url = contest.get('wikipedia_medal_url') if contest else None
+
+        if not wikipedia_medal_url:
+            flash('Wikipedia URL not configured for this contest.', 'error')
+            return redirect(url_for('admin_medals'))
+
+        logger.info(f"Admin {user['email']} triggered Wikipedia scrape: {wikipedia_medal_url}")
+
+        # Scrape and update
+        result = scrape_wikipedia_and_update_medals(db, wikipedia_medal_url)
+
+        if result['success']:
+            updated_count = result['updated_count']
+            unmatched = result.get('unmatched_countries', [])
+
+            if unmatched:
+                unmatched_preview = ", ".join(unmatched[:5])
+                if len(unmatched) > 5:
+                    unmatched_preview += "..."
+                flash(f'Updated {updated_count} countries. Warning: {len(unmatched)} countries not matched: {unmatched_preview}', 'warning')
+            else:
+                flash(f'Successfully updated medal counts for {updated_count} countries from Wikipedia!', 'success')
+        else:
+            error = result.get('error', 'Unknown error')
+            flash(f'Failed to scrape Wikipedia: {error}', 'error')
+
+        return redirect(url_for('admin_medals'))
 
     @app.route('/admin/users')
     @admin_required

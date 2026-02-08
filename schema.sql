@@ -12,6 +12,7 @@ CREATE TABLE contest (
     budget INTEGER NOT NULL DEFAULT 200,
     max_countries INTEGER NOT NULL DEFAULT 10,
     deadline TEXT NOT NULL,  -- ISO8601 UTC timestamp
+    wikipedia_medal_url TEXT,  -- Wikipedia medal table URL for auto-scraping
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

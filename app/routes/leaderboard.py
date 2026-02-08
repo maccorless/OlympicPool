@@ -1,9 +1,12 @@
 """
 Leaderboard routes: public leaderboard and team detail views.
 """
-from flask import render_template, abort, request
+import logging
+from flask import render_template, abort, request, current_app
 from app.db import get_db
 from app.decorators import get_current_user
+
+logger = logging.getLogger(__name__)
 
 
 def register_routes(app):
@@ -17,10 +20,50 @@ def register_routes(app):
 
         # Get contest state
         contest = db.execute('SELECT state FROM contest WHERE id = 1').fetchone()
+        contest_state = contest['state']
 
         # Only show leaderboard in open, locked, or complete states (not setup)
-        if contest['state'] == 'setup':
+        if contest_state == 'setup':
             abort(404)
+
+        # Auto-trigger Wikipedia scraping if data is stale (locked/complete states only)
+        scrape_in_progress = False
+
+        if contest_state in ['locked', 'complete']:
+            from app.services.medal_fetcher import (
+                is_medal_data_stale,
+                trigger_background_medal_scrape
+            )
+
+            # Get Wikipedia URL from contest table
+            contest_full = db.execute('SELECT wikipedia_medal_url FROM contest WHERE id = 1').fetchone()
+            wikipedia_url = contest_full.get('wikipedia_medal_url') if contest_full else None
+
+            if wikipedia_url:
+                # Check if scrape already in progress
+                scrape_lock_key = 'medal_scrape_in_progress'
+                scrape_lock = db.execute(
+                    'SELECT value FROM system_meta WHERE key = ?',
+                    [scrape_lock_key]
+                ).fetchone()
+
+                scrape_in_progress = (scrape_lock['value'] == 'true') if scrape_lock else False
+
+                # Check if medal data is stale
+                staleness_threshold = current_app.config.get('MEDAL_STALENESS_SECONDS', 900)
+                is_stale, last_updated_datetime = is_medal_data_stale(
+                    db,
+                    staleness_seconds=staleness_threshold
+                )
+
+                # Trigger background scrape if stale and not already running
+                if is_stale and not scrape_in_progress:
+                    trigger_background_medal_scrape(
+                        current_app._get_current_object(),
+                        wikipedia_url
+                    )
+                    scrape_in_progress = True
+                    logger.info(f"Triggered background Wikipedia scrape (data stale)")
 
         # Get sort parameters (default: points DESC)
         sort_by = request.args.get('sort', 'points')
