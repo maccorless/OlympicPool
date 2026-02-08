@@ -47,8 +47,7 @@ def get_contest_from_url():
             e.description as event_description,
             e.start_date,
             e.end_date,
-            e.is_active,
-            e.wikipedia_medal_url
+            e.is_active
         FROM contest c
         JOIN events e ON c.event_id = e.id
         WHERE e.slug = ? AND c.slug = ?
@@ -57,6 +56,19 @@ def get_contest_from_url():
     if not result:
         g.cached_contest = None
         return None
+
+    # Try to fetch wikipedia_medal_url if column exists (graceful degradation for older DBs)
+    wikipedia_url = None
+    try:
+        url_result = db.execute(
+            'SELECT wikipedia_medal_url FROM events WHERE id = ?',
+            [result['event_id']]
+        ).fetchone()
+        if url_result:
+            wikipedia_url = url_result['wikipedia_medal_url']
+    except Exception:
+        # Column doesn't exist - that's OK, auto-update won't work but app still functions
+        pass
 
     # Split into contest and event dicts
     contest = {
@@ -77,7 +89,7 @@ def get_contest_from_url():
             'start_date': result['start_date'],
             'end_date': result['end_date'],
             'is_active': result['is_active'],
-            'wikipedia_medal_url': result['wikipedia_medal_url']
+            'wikipedia_medal_url': wikipedia_url
         }
     }
 
