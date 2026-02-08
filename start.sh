@@ -22,6 +22,10 @@ fi
 # Load countries (only loads if table is empty - safe to run every time)
 flask load-countries
 
+# Run database migrations (safe to run every time - idempotent)
+echo "Running database migrations..."
+python3 migrations/add_wikipedia_medal_url.py
+
 # Start gunicorn
 echo "Starting gunicorn..."
 exec gunicorn "app:create_app()"
