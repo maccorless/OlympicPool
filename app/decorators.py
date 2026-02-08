@@ -47,7 +47,8 @@ def get_contest_from_url():
             e.description as event_description,
             e.start_date,
             e.end_date,
-            e.is_active
+            e.is_active,
+            e.wikipedia_medal_url
         FROM contest c
         JOIN events e ON c.event_id = e.id
         WHERE e.slug = ? AND c.slug = ?
@@ -75,7 +76,8 @@ def get_contest_from_url():
             'description': result['event_description'],
             'start_date': result['start_date'],
             'end_date': result['end_date'],
-            'is_active': result['is_active']
+            'is_active': result['is_active'],
+            'wikipedia_medal_url': result['wikipedia_medal_url']
         }
     }
 

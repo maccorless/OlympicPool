@@ -141,7 +141,17 @@ def register_routes(app):
         for team in teams:
             team_dict = dict(team)
             team_dict['countries'] = countries_by_user.get(team['id'], [])
-            team_dict['rank'] = rank_map[team['id']]  # Apply pre-calculated rank
+
+            # In 'open' state, everyone is tied at rank 1 (games haven't started)
+            # In 'locked'/'complete' states, use calculated ranks
+            if contest_state == 'open':
+                team_dict['rank'] = 1
+                team_dict['is_tied'] = True  # Flag for "1=" display
+            else:
+                team_dict['rank'] = rank_map[team['id']]
+                # Check if this rank is tied with next/previous team
+                team_dict['is_tied'] = sum(1 for t in rank_map.values() if t == rank_map[team['id']]) > 1
+
             teams_list.append(team_dict)
 
         # Get last updated timestamp from medals table for this event

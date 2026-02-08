@@ -12,6 +12,8 @@ CREATE TABLE events (
     description TEXT,  -- "XXV Winter Olympic Games - Italy"
     start_date TEXT NOT NULL,  -- ISO8601 UTC timestamp
     end_date TEXT NOT NULL,  -- ISO8601 UTC timestamp
+    olympics_api_slug TEXT,  -- Olympics.com API slug (e.g., "wmr-owg2026") for auto-refresh
+    wikipedia_medal_url TEXT,  -- Wikipedia medal table URL for scraping (e.g., "https://en.wikipedia.org/wiki/2026_Winter_Olympics_medal_table")
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP

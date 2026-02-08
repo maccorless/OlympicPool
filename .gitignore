@@ -203,6 +203,14 @@ cython_debug/
 ~$*.xlsx
 ~$*.xls
 
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Migration archive
+migration-archive/
+
 # Temp test/debug scripts
 check_config.py
 debug_config.py
@@ -220,3 +228,4 @@ test_email.py
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+backups/

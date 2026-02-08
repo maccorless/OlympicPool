@@ -121,7 +121,9 @@
                     <tr class="{% if current_user_id and team.id == current_user_id %}bg-blue-50{% endif %} hover:bg-gray-50 cursor-pointer"
                         onclick="window.location.href='{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=team.id) }}'">
                         <td class="px-3 py-2 whitespace-nowrap">
-                            <div class="text-base font-bold text-gray-900">#{{ team.rank }}</div>
+                            <div class="text-base font-bold text-gray-900">
+                                {% if team.is_tied %}{{ team.rank }}={% else %}#{{ team.rank }}{% endif %}
+                            </div>
                         </td>
                         <td class="px-3 py-2">
                             <div class="text-sm font-medium text-gray-900">{{ team.team_name }}</div>
@@ -192,7 +194,9 @@
                  onclick="window.location.href='{{ url_for('team_detail', event_slug=event.slug, contest_slug=contest.slug, user_id=team.id) }}'">
                 <!-- Rank and Points -->
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-base font-bold text-gray-900">#{{ team.rank }}</div>
+                    <div class="text-base font-bold text-gray-900">
+                        {% if team.is_tied %}{{ team.rank }}={% else %}#{{ team.rank }}{% endif %}
+                    </div>
                     {% if contest_state in ['locked', 'complete'] %}
                     <div class="text-lg font-bold text-purple-600">{{ team.total_points }} pts</div>
                     {% endif %}

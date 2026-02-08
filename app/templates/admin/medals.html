@@ -18,6 +18,48 @@
         <p class="text-sm text-gray-500 mt-2">💡 Tip: Start typing a country name to jump to that row. <a href="{{ url_for('admin_medals_bulk', event_slug=event.slug, contest_slug=contest.slug) }}" class="text-blue-600 hover:text-blue-800">Or bulk paste from Excel →</a></p>
     </div>
 
+    <!-- Auto-Refresh Section -->
+    {% if wikipedia_configured %}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h3 class="text-lg font-semibold text-blue-900 mb-3">🔄 Auto-Refresh from Wikipedia</h3>
+
+        <!-- Scrape Status -->
+        {% if scrape_metadata %}
+            {% if scrape_metadata.success %}
+                <div class="text-sm text-blue-800 space-y-1 mb-4">
+                    <p><strong>Last updated:</strong> {{ scrape_metadata.timestamp[:19].replace('T', ' ') }} UTC</p>
+                    <p><strong>Status:</strong>
+                        <span class="text-green-700">✓ Success</span>
+                        - {{ scrape_metadata.countries_updated }} countries updated
+                    </p>
+                    {% if scrape_metadata.unmatched_countries and scrape_metadata.unmatched_countries|length > 0 %}
+                    <p class="text-orange-700">
+                        <strong>⚠️ Warning:</strong> {{ scrape_metadata.unmatched_countries|length }} countries not matched:
+                        {{ scrape_metadata.unmatched_countries[:3]|join(', ') }}{% if scrape_metadata.unmatched_countries|length > 3 %}...{% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="text-sm text-red-800 mb-4">
+                    <p><strong>Last attempt:</strong> {{ scrape_metadata.timestamp[:19].replace('T', ' ') }} UTC</p>
+                    <p><strong>Status:</strong> <span class="text-red-700">✗ Failed</span> - {{ scrape_metadata.error }}</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="text-sm text-blue-800 mb-4">No automatic updates yet. Click the button below to fetch latest medals from Wikipedia.</p>
+        {% endif %}
+
+        <!-- Action Button -->
+        <form method="POST" action="{{ url_for('admin_medals_scrape_wikipedia', event_slug=event.slug, contest_slug=contest.slug) }}">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                📚 Refresh from Wikipedia
+            </button>
+        </form>
+
+        <p class="text-xs text-blue-700 mt-3">💡 Scraping may take 5-10 seconds. Medal data is fetched from Wikipedia's live medal table.</p>
+    </div>
+    {% endif %}
+
     <!-- Search indicator (hidden by default) -->
     <div id="search-indicator" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg text-2xl font-mono z-50">
         <span id="search-text"></span>
