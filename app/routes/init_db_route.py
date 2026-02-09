@@ -26,7 +26,7 @@ def register_routes(app):
         # Ensure directory exists
         os.makedirs(db_dir, exist_ok=True)
 
-        # Check if database already has data
+        # Check if database already has data and clear it
         if os.path.exists(db_path):
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -34,13 +34,19 @@ def register_routes(app):
                 cursor.execute("SELECT COUNT(*) FROM users")
                 user_count = cursor.fetchone()[0]
                 if user_count > 0:
-                    conn.close()
-                    return jsonify({
-                        'success': False,
-                        'message': f'Database already has {user_count} users. Skipping initialization.'
-                    })
-            except:
-                pass  # Table doesn't exist yet
+                    # Clear all data before importing
+                    cursor.execute("DELETE FROM picks")
+                    cursor.execute("DELETE FROM otp_codes")
+                    cursor.execute("DELETE FROM users")
+                    cursor.execute("DELETE FROM medals")
+                    cursor.execute("DELETE FROM system_meta")
+                    cursor.execute("DELETE FROM contest")
+                    cursor.execute("DELETE FROM countries")
+                    conn.commit()
+                    print(f"Cleared existing {user_count} users and all related data")
+            except Exception as e:
+                print(f"Could not clear existing data: {e}")
+                pass
             conn.close()
 
         # Read production dump
