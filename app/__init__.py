@@ -52,12 +52,13 @@ def create_app(test_config=None):
         return {'user': get_current_user()}
 
     # Register all routes (imported here to avoid circular imports)
-    from app.routes import auth, draft, leaderboard, admin, init_db_route
+    from app.routes import auth, draft, leaderboard, admin, init_db_route, export_db_route
     auth.register_routes(app)
     draft.register_routes(app)
     leaderboard.register_routes(app)
     admin.register_routes(app)
     init_db_route.register_routes(app)
+    export_db_route.register_routes(app)
 
     # Home route
     @app.route('/')
