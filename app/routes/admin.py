@@ -648,3 +648,20 @@ def register_routes(app):
                              total_budget_spent=total_budget_spent,
                              sort_by=sort_by,
                              order=order)
+
+    @app.route('/admin/config-check')
+    @admin_required
+    def admin_config_check():
+        """Check configuration values (for debugging)."""
+        from flask import jsonify, current_app
+        import os
+
+        config = {
+            'MEDAL_STALENESS_SECONDS': current_app.config.get('MEDAL_STALENESS_SECONDS'),
+            'DATABASE_DIR': os.getenv('DATABASE_DIR'),
+            'RAILWAY_ENVIRONMENT': os.getenv('RAILWAY_ENVIRONMENT'),
+            'BASE_URL': current_app.config.get('BASE_URL'),
+            'NO_SMS_MODE': os.getenv('NO_SMS_MODE'),
+        }
+
+        return jsonify(config)
