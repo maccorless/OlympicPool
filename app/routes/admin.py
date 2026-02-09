@@ -573,6 +573,17 @@ def register_routes(app):
         db = get_db()
         user = get_current_user()
 
+        # Get sort parameters
+        sort_by = request.args.get('sort', 'pick_count')  # Default: sort by popularity
+        order = request.args.get('order', 'desc')  # Default: descending
+
+        # Validate sort parameters
+        valid_sorts = ['name', 'cost', 'pick_count', 'popularity_pct', 'country_total_spent', 'budget_pct']
+        if sort_by not in valid_sorts:
+            sort_by = 'pick_count'
+        if order not in ('asc', 'desc'):
+            order = 'desc'
+
         # Get total user count
         total_users = db.execute('SELECT COUNT(*) as count FROM users').fetchone()['count']
 
@@ -588,7 +599,6 @@ def register_routes(app):
             LEFT JOIN picks p ON c.code = p.country_code
             WHERE c.is_active = 1
             GROUP BY c.code
-            ORDER BY pick_count DESC, c.name ASC
         ''').fetchall()
 
         # Calculate total budget spent across all picks
@@ -624,8 +634,17 @@ def register_routes(app):
                 'budget_pct': round(budget_pct, 1)
             })
 
+        # Sort the stats list
+        reverse = (order == 'desc')
+        if sort_by == 'name':
+            country_stats.sort(key=lambda x: x['name'].lower(), reverse=reverse)
+        else:
+            country_stats.sort(key=lambda x: x[sort_by], reverse=reverse)
+
         return render_template('admin/country_stats.html',
                              user=user,
                              country_stats=country_stats,
                              total_users=total_users,
-                             total_budget_spent=total_budget_spent)
+                             total_budget_spent=total_budget_spent,
+                             sort_by=sort_by,
+                             order=order)

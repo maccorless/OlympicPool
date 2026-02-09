@@ -54,22 +54,52 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Country
+                            <a href="?sort=name&order={{ 'asc' if sort_by == 'name' and order == 'desc' else 'desc' }}" class="flex items-center hover:text-gray-700">
+                                Country
+                                {% if sort_by == 'name' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cost
+                            <a href="?sort=cost&order={{ 'asc' if sort_by == 'cost' and order == 'desc' else 'desc' }}" class="flex items-center justify-center hover:text-gray-700">
+                                Cost
+                                {% if sort_by == 'cost' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            # Teams
+                            <a href="?sort=pick_count&order={{ 'asc' if sort_by == 'pick_count' and order == 'desc' else 'desc' }}" class="flex items-center justify-center hover:text-gray-700">
+                                # Teams
+                                {% if sort_by == 'pick_count' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Popularity %
+                            <a href="?sort=popularity_pct&order={{ 'asc' if sort_by == 'popularity_pct' and order == 'desc' else 'desc' }}" class="flex items-center justify-center hover:text-gray-700">
+                                Popularity %
+                                {% if sort_by == 'popularity_pct' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total Spent
+                            <a href="?sort=country_total_spent&order={{ 'asc' if sort_by == 'country_total_spent' and order == 'desc' else 'desc' }}" class="flex items-center justify-center hover:text-gray-700">
+                                Total Spent
+                                {% if sort_by == 'country_total_spent' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Budget %
+                            <a href="?sort=budget_pct&order={{ 'asc' if sort_by == 'budget_pct' and order == 'desc' else 'desc' }}" class="flex items-center justify-center hover:text-gray-700">
+                                Budget %
+                                {% if sort_by == 'budget_pct' %}
+                                    <span class="ml-1">{{ '↑' if order == 'asc' else '↓' }}</span>
+                                {% endif %}
+                            </a>
                         </th>
                     </tr>
                 </thead>
