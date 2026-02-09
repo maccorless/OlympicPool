@@ -565,3 +565,67 @@ def register_routes(app):
             flash('Failed to delete user.', 'error')
 
         return redirect(url_for('admin_users'))
+
+    @app.route('/admin/country-stats')
+    @admin_required
+    def admin_country_stats():
+        """Country statistics: popularity and budget allocation."""
+        db = get_db()
+        user = get_current_user()
+
+        # Get total user count
+        total_users = db.execute('SELECT COUNT(*) as count FROM users').fetchone()['count']
+
+        # Get all countries with pick counts
+        countries = db.execute('''
+            SELECT
+                c.code,
+                c.iso_code,
+                c.name,
+                c.cost,
+                COUNT(p.id) as pick_count
+            FROM countries c
+            LEFT JOIN picks p ON c.code = p.country_code
+            WHERE c.is_active = 1
+            GROUP BY c.code
+            ORDER BY pick_count DESC, c.name ASC
+        ''').fetchall()
+
+        # Calculate total budget spent across all picks
+        total_budget_spent = db.execute('''
+            SELECT SUM(c.cost) as total
+            FROM picks p
+            JOIN countries c ON p.country_code = c.code
+        ''').fetchone()['total'] or 0
+
+        # Build stats list with percentages
+        country_stats = []
+        for country in countries:
+            pick_count = country['pick_count']
+            cost = country['cost']
+
+            # Percentage of users who picked this country
+            popularity_pct = (pick_count / total_users * 100) if total_users > 0 else 0
+
+            # Total budget spent on this country (cost * number of picks)
+            country_total_spent = cost * pick_count
+
+            # Percentage of total budget
+            budget_pct = (country_total_spent / total_budget_spent * 100) if total_budget_spent > 0 else 0
+
+            country_stats.append({
+                'code': country['code'],
+                'iso_code': country['iso_code'],
+                'name': country['name'],
+                'cost': cost,
+                'pick_count': pick_count,
+                'popularity_pct': round(popularity_pct, 1),
+                'country_total_spent': country_total_spent,
+                'budget_pct': round(budget_pct, 1)
+            })
+
+        return render_template('admin/country_stats.html',
+                             user=user,
+                             country_stats=country_stats,
+                             total_users=total_users,
+                             total_budget_spent=total_budget_spent)

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Country Statistics - Admin{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Back to Dashboard -->
+    <div class="mb-4">
+        <a href="{{ url_for('admin_dashboard') }}" class="text-blue-600 hover:text-blue-800">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Country Statistics</h1>
+        <p class="text-gray-600">Popularity and budget allocation across all teams</p>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-sm font-medium text-gray-500 mb-1">Total Users</div>
+            <div class="text-3xl font-bold text-gray-900">{{ total_users }}</div>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-sm font-medium text-gray-500 mb-1">Total Budget Spent</div>
+            <div class="text-3xl font-bold text-gray-900">{{ total_budget_spent }}</div>
+        </div>
+        <div class="bg-white shadow rounded-lg p-6">
+            <div class="text-sm font-medium text-gray-500 mb-1">Countries Available</div>
+            <div class="text-3xl font-bold text-gray-900">{{ country_stats|length }}</div>
+        </div>
+    </div>
+
+    {% if country_stats|length == 0 %}
+    <!-- Empty State -->
+    <div class="bg-white shadow rounded-lg p-12 text-center">
+        <div class="text-6xl mb-4">🌍</div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-2">No Countries Yet</h2>
+        <p class="text-gray-600">Import countries to see statistics.</p>
+    </div>
+    {% else %}
+    <!-- Country Stats Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-gray-900">Country Breakdown</h2>
+            <p class="text-sm text-gray-500 mt-1">Sorted by popularity (most picked first)</p>
+        </div>
+
+        <!-- Desktop View -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Country
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cost
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            # Teams
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Popularity %
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Total Spent
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Budget %
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for country in country_stats %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                                     alt="{{ country.name }}"
+                                     class="w-8 h-6 object-cover rounded mr-3"
+                                     loading="eager">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                                    <div class="text-xs text-gray-500">{{ country.code }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm text-gray-900">{{ country.cost }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm font-semibold text-blue-600">{{ country.pick_count }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="text-sm font-semibold text-gray-900">{{ country.popularity_pct }}%</div>
+                                <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: {{ country.popularity_pct }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="text-sm text-gray-900">{{ country.country_total_spent }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex flex-col items-center">
+                                <div class="text-sm font-semibold text-gray-900">{{ country.budget_pct }}%</div>
+                                <div class="w-20 bg-gray-200 rounded-full h-2 mt-1">
+                                    <div class="bg-green-500 h-2 rounded-full" style="width: {{ [country.budget_pct, 100]|min }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile View -->
+        <div class="md:hidden divide-y divide-gray-200">
+            {% for country in country_stats %}
+            <div class="p-4">
+                <div class="flex items-center mb-3">
+                    <img src="https://flagcdn.com/w40/{{ country.iso_code|lower }}.png"
+                         alt="{{ country.name }}"
+                         class="w-10 h-7 object-cover rounded mr-3"
+                         loading="eager">
+                    <div class="flex-1">
+                        <div class="text-sm font-medium text-gray-900">{{ country.name }}</div>
+                        <div class="text-xs text-gray-500">{{ country.code }} • Cost: {{ country.cost }}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">Popularity</div>
+                        <div class="font-semibold text-gray-900">{{ country.pick_count }} teams ({{ country.popularity_pct }}%)</div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ country.popularity_pct }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500 mb-1">Budget Share</div>
+                        <div class="font-semibold text-gray-900">{{ country.country_total_spent }} ({{ country.budget_pct }}%)</div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: {{ [country.budget_pct, 100]|min }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-semibold text-blue-900 mb-2">📊 How to Read This Data</h3>
+        <ul class="text-sm text-blue-800 space-y-1">
+            <li><strong>Popularity %:</strong> Percentage of users who picked this country</li>
+            <li><strong>Budget %:</strong> Percentage of total budget spent across all teams on this country</li>
+            <li><strong>Total Spent:</strong> Cost × Number of teams that picked it</li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
