@@ -66,9 +66,14 @@ def create_app(test_config=None):
         from app.db import get_db
 
         db_conn = get_db()
-        contest = db_conn.execute('SELECT state FROM contest WHERE id = 1').fetchone()
+        try:
+            contest = db_conn.execute('SELECT state FROM contest WHERE id = 1').fetchone()
+            contest_state = contest['state'] if contest else 'setup'
+        except:
+            # Database not initialized yet
+            contest_state = 'setup'
 
-        return render_template('index.html', contest_state=contest['state'])
+        return render_template('index.html', contest_state=contest_state)
 
     # Privacy policy route
     @app.route('/privacy')

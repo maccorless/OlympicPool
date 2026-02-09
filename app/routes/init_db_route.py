@@ -62,10 +62,20 @@ def register_routes(app):
         with open(dump_file, 'r') as f:
             sql_dump = f.read()
 
-        # Import into database
+        # Import into database (as a transaction - all or nothing)
         conn = sqlite3.connect(db_path)
         try:
+            # Execute SQL dump
             conn.executescript(sql_dump)
+
+            # Verify tables were created
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+
+            if 'contest' not in tables or 'users' not in tables:
+                raise Exception("Import failed - required tables not created")
+
             conn.commit()
 
             # Verify
