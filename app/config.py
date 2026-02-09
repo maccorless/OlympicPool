@@ -31,7 +31,10 @@ from datetime import datetime
 _contest_end = datetime(2026, 3, 31, 23, 59, 59)
 _days_until_end = (_contest_end - datetime.now()).days + 1
 PERMANENT_SESSION_LIFETIME = timedelta(days=max(_days_until_end, 365))  # At least 1 year
-SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+
+# Auto-detect HTTPS: True on Railway or if BASE_URL uses https
+_is_production = os.getenv('RAILWAY_ENVIRONMENT') or BASE_URL.startswith('https://')
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', str(_is_production)).lower() == 'true'
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 
