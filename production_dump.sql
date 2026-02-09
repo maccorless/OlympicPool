@@ -1,0 +1,189 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE contest (
+    id INTEGER PRIMARY KEY CHECK (id = 1),  -- Enforce single row
+    name TEXT NOT NULL DEFAULT 'XXV Winter Olympic Games',
+    state TEXT NOT NULL DEFAULT 'setup' CHECK (state IN ('setup', 'open', 'locked', 'complete')),
+    budget INTEGER NOT NULL DEFAULT 200,
+    max_countries INTEGER NOT NULL DEFAULT 10,
+    deadline TEXT NOT NULL,  -- ISO8601 UTC timestamp
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+, wikipedia_medal_url TEXT);
+INSERT INTO contest VALUES(1,'XXV Winter Olympic Games','locked',200,10,'2026-02-04T17:00:00Z','2026-01-17 08:15:33','2026-01-17T16:13:13.073391+00:00','https://en.wikipedia.org/wiki/2026_Winter_Olympics_medal_table');
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL CHECK (email LIKE '%@%'),
+    phone_number TEXT UNIQUE NOT NULL,  -- E.164 format: +12065551234
+    name TEXT NOT NULL,
+    team_name TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO users VALUES(2,'ken@corless.com','+13126183399','ken corless','dreamers','2026-01-17 11:19:50');
+INSERT INTO users VALUES(3,'k3@corless.com','+13126183398','Joe test','test','2026-01-17 11:47:01');
+INSERT INTO users VALUES(4,'ken4@corless.com','+13126189999','ken4','test4','2026-01-17 11:57:46');
+CREATE TABLE countries (
+    code TEXT PRIMARY KEY,  -- IOC 3-letter code (NOR, GER, SUI)
+    iso_code TEXT NOT NULL,  -- ISO 2-letter code (NO, DE, CH) for flag URLs
+    name TEXT NOT NULL,
+    expected_points INTEGER NOT NULL,  -- Projected points (reference only)
+    cost INTEGER NOT NULL,  -- Draft cost
+    is_active INTEGER NOT NULL DEFAULT 1
+);
+INSERT INTO countries VALUES('NOR','NO','Norway',87,98,1);
+INSERT INTO countries VALUES('GER','DE','Germany',64,65,1);
+INSERT INTO countries VALUES('USA','US','United States',58,57,1);
+INSERT INTO countries VALUES('CAN','CA','Canada',48,45,1);
+INSERT INTO countries VALUES('SWE','SE','Sweden',43,39,1);
+INSERT INTO countries VALUES('AUT','AT','Austria',41,37,1);
+INSERT INTO countries VALUES('CHN','CN','China',40,36,1);
+INSERT INTO countries VALUES('NED','NL','Netherlands',39,35,1);
+INSERT INTO countries VALUES('FRA','FR','France',36,32,1);
+INSERT INTO countries VALUES('JPN','JP','Japan',35,30,1);
+INSERT INTO countries VALUES('SUI','CH','Switzerland',31,26,1);
+INSERT INTO countries VALUES('ITA','IT','Italy',28,23,1);
+INSERT INTO countries VALUES('KOR','KR','South Korea',21,17,1);
+INSERT INTO countries VALUES('FIN','FI','Finland',19,15,1);
+INSERT INTO countries VALUES('SLO','SI','Slovenia',14,11,1);
+INSERT INTO countries VALUES('AUS','AU','Australia',8,6,1);
+INSERT INTO countries VALUES('BEL','BE','Belgium',5,4,1);
+INSERT INTO countries VALUES('SVK','SK','Slovakia',5,4,1);
+INSERT INTO countries VALUES('UKR','UA','Ukraine',5,4,1);
+INSERT INTO countries VALUES('GBR','GB','Great Britain',5,4,1);
+INSERT INTO countries VALUES('NZL','NZ','New Zealand',4,3,1);
+INSERT INTO countries VALUES('CZE','CZ','Czech Republic',4,3,1);
+INSERT INTO countries VALUES('HUN','HU','Hungary',4,3,1);
+INSERT INTO countries VALUES('ESP','ES','Spain',2,1,1);
+INSERT INTO countries VALUES('POL','PL','Poland',2,1,1);
+INSERT INTO countries VALUES('LAT','LV','Latvia',1,1,1);
+INSERT INTO countries VALUES('CRO','HR','Croatia',0,1,1);
+INSERT INTO countries VALUES('LIE','LI','Liechtenstein',0,1,1);
+INSERT INTO countries VALUES('DEN','DK','Denmark',0,1,1);
+INSERT INTO countries VALUES('BUL','BG','Bulgaria',0,1,1);
+INSERT INTO countries VALUES('ROU','RO','Romania',0,1,1);
+INSERT INTO countries VALUES('GEO','GE','Georgia',0,1,1);
+INSERT INTO countries VALUES('AND','AD','Andorra',0,1,1);
+INSERT INTO countries VALUES('ARG','AR','Argentina',0,1,1);
+INSERT INTO countries VALUES('ARM','AM','Armenia',0,1,1);
+INSERT INTO countries VALUES('AZE','AZ','Azerbaijan',0,1,1);
+INSERT INTO countries VALUES('BIH','BA','Bosnia and Herzegovina',0,1,1);
+INSERT INTO countries VALUES('BRA','BR','Brazil',0,1,1);
+INSERT INTO countries VALUES('CHI','CL','Chile',0,1,1);
+INSERT INTO countries VALUES('COL','CO','Colombia',0,1,1);
+INSERT INTO countries VALUES('CYP','CY','Cyprus',0,1,1);
+INSERT INTO countries VALUES('GRE','GR','Greece',0,1,1);
+INSERT INTO countries VALUES('HKG','HK','Hong Kong',0,1,1);
+INSERT INTO countries VALUES('IND','IN','India',0,1,1);
+INSERT INTO countries VALUES('IRL','IE','Ireland',0,1,1);
+INSERT INTO countries VALUES('ISR','IL','Israel',0,1,1);
+INSERT INTO countries VALUES('LTU','LT','Lithuania',0,1,1);
+INSERT INTO countries VALUES('LUX','LU','Luxembourg',0,1,1);
+INSERT INTO countries VALUES('MEX','MX','Mexico',0,1,1);
+INSERT INTO countries VALUES('MKD','MK','North Macedonia',0,1,1);
+INSERT INTO countries VALUES('MNE','ME','Montenegro',0,1,1);
+INSERT INTO countries VALUES('MON','MC','Monaco',0,1,1);
+INSERT INTO countries VALUES('PER','PE','Peru',0,1,1);
+INSERT INTO countries VALUES('POR','PT','Portugal',0,1,1);
+INSERT INTO countries VALUES('RSA','ZA','South Africa',0,1,1);
+INSERT INTO countries VALUES('SRB','RS','Serbia',0,1,1);
+INSERT INTO countries VALUES('TPE','TW','Chinese Taipei',0,1,1);
+INSERT INTO countries VALUES('TUR','TR','Turkey',0,1,1);
+CREATE TABLE picks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    country_code TEXT NOT NULL REFERENCES countries(code),
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, country_code)
+);
+INSERT INTO picks VALUES(1,2,'GER','2026-01-17 11:20:11');
+INSERT INTO picks VALUES(2,2,'NOR','2026-01-17 11:20:11');
+INSERT INTO picks VALUES(3,3,'GER','2026-01-17 11:47:34');
+CREATE TABLE medals (
+    country_code TEXT PRIMARY KEY REFERENCES countries(code),
+    gold INTEGER NOT NULL DEFAULT 0,
+    silver INTEGER NOT NULL DEFAULT 0,
+    bronze INTEGER NOT NULL DEFAULT 0,
+    points INTEGER NOT NULL DEFAULT 0,  -- Calculated: gold*3 + silver*2 + bronze
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO medals VALUES('NOR',3,1,2,13,'2026-02-09T10:54:20.898892+00:00');
+INSERT INTO medals VALUES('GER',1,1,1,6,'2026-02-09T10:54:20.898979+00:00');
+INSERT INTO medals VALUES('USA',2,0,0,6,'2026-02-09T10:54:20.898933+00:00');
+INSERT INTO medals VALUES('CAN',0,0,1,1,'2026-02-09T10:54:20.899052+00:00');
+INSERT INTO medals VALUES('SWE',1,1,0,5,'2026-02-09T10:54:20.899005+00:00');
+INSERT INTO medals VALUES('AUT',1,2,0,7,'2026-02-09T10:54:20.898968+00:00');
+INSERT INTO medals VALUES('CHN',0,0,1,1,'2026-02-09T10:54:20.899062+00:00');
+INSERT INTO medals VALUES('NED',0,0,0,0,'2026-01-17T15:36:37.672686+00:00');
+INSERT INTO medals VALUES('FRA',1,1,0,5,'2026-02-09T10:54:20.898994+00:00');
+INSERT INTO medals VALUES('JPN',1,2,1,8,'2026-02-09T10:54:20.898957+00:00');
+INSERT INTO medals VALUES('SUI',1,0,0,3,'2026-02-09T10:54:20.899016+00:00');
+INSERT INTO medals VALUES('ITA',1,2,6,13,'2026-02-09T10:54:20.898946+00:00');
+INSERT INTO medals VALUES('KOR',0,1,0,2,'2026-02-09T10:54:20.899031+00:00');
+INSERT INTO medals VALUES('FIN',0,0,0,0,'2026-01-17T15:36:37.672715+00:00');
+INSERT INTO medals VALUES('SLO',0,1,0,2,'2026-02-09T10:54:20.899026+00:00');
+INSERT INTO medals VALUES('AUS',0,0,0,0,'2026-01-17T15:36:37.672724+00:00');
+INSERT INTO medals VALUES('BEL',0,0,0,0,'2026-01-17T15:36:37.672731+00:00');
+INSERT INTO medals VALUES('SVK',0,0,0,0,'2026-01-17T15:36:37.672736+00:00');
+INSERT INTO medals VALUES('UKR',0,0,0,0,'2026-01-17T15:36:37.672740+00:00');
+INSERT INTO medals VALUES('GBR',0,0,0,0,'2026-01-17T15:36:37.672745+00:00');
+INSERT INTO medals VALUES('NZL',0,0,0,0,'2026-01-17T15:36:37.672749+00:00');
+INSERT INTO medals VALUES('CZE',1,1,0,5,'2026-02-09T10:54:20.898984+00:00');
+INSERT INTO medals VALUES('HUN',0,0,0,0,'2026-01-17T15:36:37.672759+00:00');
+INSERT INTO medals VALUES('ESP',0,0,0,0,'2026-01-17T15:36:37.672763+00:00');
+INSERT INTO medals VALUES('POL',0,0,0,0,'2026-01-17T15:36:37.672768+00:00');
+INSERT INTO medals VALUES('LAT',0,0,0,0,'2026-01-17T15:36:37.672772+00:00');
+INSERT INTO medals VALUES('CRO',0,0,0,0,'2026-01-17T15:36:37.672777+00:00');
+INSERT INTO medals VALUES('LIE',0,0,0,0,'2026-01-17T15:36:37.672782+00:00');
+INSERT INTO medals VALUES('DEN',0,0,0,0,'2026-01-17T15:36:37.672790+00:00');
+INSERT INTO medals VALUES('BUL',0,0,1,1,'2026-02-09T10:54:20.899042+00:00');
+INSERT INTO medals VALUES('ROU',0,0,0,0,'2026-01-17T15:36:37.672799+00:00');
+INSERT INTO medals VALUES('GEO',0,0,0,0,'2026-01-17T15:36:37.672804+00:00');
+INSERT INTO medals VALUES('AND',0,0,0,0,'2026-01-17T15:36:37.672811+00:00');
+INSERT INTO medals VALUES('ARG',0,0,0,0,'2026-01-17T15:36:37.672816+00:00');
+INSERT INTO medals VALUES('ARM',0,0,0,0,'2026-01-17T15:36:37.672822+00:00');
+INSERT INTO medals VALUES('AZE',0,0,0,0,'2026-01-17T15:36:37.672827+00:00');
+INSERT INTO medals VALUES('BRA',0,0,0,0,'2026-01-17T15:36:37.672832+00:00');
+INSERT INTO medals VALUES('CHI',0,0,0,0,'2026-01-17T15:36:37.672838+00:00');
+INSERT INTO medals VALUES('COL',0,0,0,0,'2026-01-17T15:36:37.672843+00:00');
+INSERT INTO medals VALUES('CYP',0,0,0,0,'2026-01-17T15:36:37.672847+00:00');
+INSERT INTO medals VALUES('GRE',0,0,0,0,'2026-01-17T15:36:37.672852+00:00');
+INSERT INTO medals VALUES('HKG',0,0,0,0,'2026-01-17T15:36:37.672857+00:00');
+INSERT INTO medals VALUES('IND',0,0,0,0,'2026-01-17T15:36:37.672862+00:00');
+INSERT INTO medals VALUES('IRL',0,0,0,0,'2026-01-17T15:36:37.672867+00:00');
+INSERT INTO medals VALUES('ISR',0,0,0,0,'2026-01-17T15:36:37.672873+00:00');
+INSERT INTO medals VALUES('LTU',0,0,0,0,'2026-01-17T15:36:37.672878+00:00');
+INSERT INTO medals VALUES('LUX',0,0,0,0,'2026-01-17T15:36:37.672883+00:00');
+INSERT INTO medals VALUES('MEX',0,0,0,0,'2026-01-17T15:36:37.672887+00:00');
+INSERT INTO medals VALUES('MKD',0,0,0,0,'2026-01-17T15:36:37.672893+00:00');
+INSERT INTO medals VALUES('MNE',0,0,0,0,'2026-01-17T15:36:37.672898+00:00');
+INSERT INTO medals VALUES('MON',0,0,0,0,'2026-01-17T15:36:37.672902+00:00');
+INSERT INTO medals VALUES('PER',0,0,0,0,'2026-01-17T15:36:37.672906+00:00');
+INSERT INTO medals VALUES('POR',0,0,0,0,'2026-01-17T15:36:37.672911+00:00');
+INSERT INTO medals VALUES('RSA',0,0,0,0,'2026-01-17T15:36:37.672915+00:00');
+INSERT INTO medals VALUES('SRB',0,0,0,0,'2026-01-17T15:36:37.672919+00:00');
+INSERT INTO medals VALUES('TPE',0,0,0,0,'2026-01-17T15:36:37.672924+00:00');
+INSERT INTO medals VALUES('TUR',0,0,0,0,'2026-01-17T15:36:37.672928+00:00');
+CREATE TABLE otp_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,  -- SHA-256 hash of 6-digit code
+    expires_at TEXT NOT NULL,  -- ISO8601 UTC (10 minutes from creation)
+    used_at TEXT,  -- Set when consumed (single-use)
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO otp_codes VALUES(4,2,'c128ff3c59bab794748d794f075659b32dff6dfa73288bb73e8985634da987e4','2026-01-17T11:30:27.546935+00:00','2026-01-17T11:20:36.995377+00:00','2026-01-17 11:20:27');
+INSERT INTO otp_codes VALUES(5,2,'c5d27af23441fd2fb2129032b7fa6d401d4e020fd2b08f604958b416c1ce17cc','2026-02-09T11:03:26.825565+00:00','2026-02-09T10:53:31.080213+00:00','2026-02-09 10:53:26');
+CREATE TABLE system_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO system_meta VALUES('medals_last_scrape','{"timestamp": "2026-02-09T10:54:20.899470+00:00", "source": "wikipedia", "success": true, "countries_fetched": 15, "countries_updated": 15, "unmatched_countries": [], "data_changed": false}','2026-02-09 10:54:20');
+INSERT INTO system_meta VALUES('medal_scrape_in_progress','false','2026-02-09 10:53:57');
+INSERT INTO sqlite_sequence VALUES('users',4);
+INSERT INTO sqlite_sequence VALUES('otp_codes',5);
+INSERT INTO sqlite_sequence VALUES('picks',3);
+CREATE INDEX idx_picks_user ON picks(user_id);
+CREATE INDEX idx_otp_user_created ON otp_codes(user_id, created_at);
+CREATE INDEX idx_otp_expires ON otp_codes(expires_at);
+COMMIT;
