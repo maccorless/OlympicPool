@@ -567,9 +567,8 @@ def register_routes(app):
         return redirect(url_for('admin_users'))
 
     @app.route('/admin/country-stats')
-    @admin_required
     def admin_country_stats():
-        """Country statistics: popularity and budget allocation."""
+        """Country statistics: popularity and budget allocation (public)."""
         db = get_db()
         user = get_current_user()
 
