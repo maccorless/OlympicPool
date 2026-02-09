@@ -26,28 +26,30 @@ def register_routes(app):
         # Ensure directory exists
         os.makedirs(db_dir, exist_ok=True)
 
-        # Check if database already has data and clear it
+        # Drop all existing tables to allow fresh import
         if os.path.exists(db_path):
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            try:
-                cursor.execute("SELECT COUNT(*) FROM users")
-                user_count = cursor.fetchone()[0]
-                if user_count > 0:
-                    # Clear all data before importing
-                    cursor.execute("DELETE FROM picks")
-                    cursor.execute("DELETE FROM otp_codes")
-                    cursor.execute("DELETE FROM users")
-                    cursor.execute("DELETE FROM medals")
-                    cursor.execute("DELETE FROM system_meta")
-                    cursor.execute("DELETE FROM contest")
-                    cursor.execute("DELETE FROM countries")
-                    conn.commit()
-                    print(f"Cleared existing {user_count} users and all related data")
-            except Exception as e:
-                print(f"Could not clear existing data: {e}")
-                pass
+
+            # Get list of all tables
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [row[0] for row in cursor.fetchall()]
+
+            # Drop all tables
+            for table in tables:
+                if table != 'sqlite_sequence':  # Keep sqlite internal table
+                    cursor.execute(f"DROP TABLE IF EXISTS {table}")
+
+            # Drop indexes
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='index'")
+            indexes = [row[0] for row in cursor.fetchall()]
+            for index in indexes:
+                if not index.startswith('sqlite_'):  # Keep sqlite internal indexes
+                    cursor.execute(f"DROP INDEX IF EXISTS {index}")
+
+            conn.commit()
             conn.close()
+            print(f"Dropped all existing tables and indexes")
 
         # Read production dump
         dump_file = os.path.join(app.root_path, '..', 'production_dump.sql')
